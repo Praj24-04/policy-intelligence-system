@@ -3,7 +3,7 @@ from app.services.nlp_service import load_policies
 from app.database import get_connection
 
 def get_country_distribution():
-    policies = load_policies(limit=1000)  # Load more for distribution
+    policies = load_policies()  # Load more for distribution
     counts = Counter()
     for p in policies:
         for c in p["extracted_countries"]:

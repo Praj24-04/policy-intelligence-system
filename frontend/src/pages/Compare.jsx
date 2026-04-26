@@ -12,9 +12,8 @@ export default function Compare() {
   const [result,       setResult]       = useState(null);
   const [loading,      setLoading]      = useState(false);
   const [step,         setStep]         = useState(1);
-  const [sectorFilter, setSectorFilter] = useState("");  // ← NEW
+  const [sectorFilter, setSectorFilter] = useState("");
 
-  // ← REPLACED: now re-fetches when sectorFilter changes
   useEffect(() => {
     fetchPolicies(sectorFilter ? { sector: sectorFilter } : {}).then(d => {
       setPolicies(d || []);
@@ -91,6 +90,8 @@ export default function Compare() {
       {/* Result Panel */}
       {step === 3 && result && !loading && (
         <div className="fade-up" style={{ marginBottom: 24 }}>
+
+          {/* Policy Cards Side by Side */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
             {[result.policy_1, result.policy_2].map((p, i) => (
               <div key={i} className="card" style={{
@@ -111,7 +112,7 @@ export default function Compare() {
                 </div>
                 {p.tags?.length > 0 && (
                   <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 4 }}>
-                    {p.tags.slice(0, 3).map(t => (
+                    {p.tags.slice(0, 4).map(t => (
                       <span key={t} style={{
                         fontSize: 10, padding: "2px 7px", borderRadius: 4,
                         background: "var(--bg-hover)", color: "var(--text-muted)",
@@ -122,11 +123,53 @@ export default function Compare() {
                     ))}
                   </div>
                 )}
+
+                {/* Unique tags for this policy */}
+                {i === 0 && result.unique_to_policy_1?.length > 0 && (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 4 }}>
+                      UNIQUE FOCUS AREAS
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {result.unique_to_policy_1.slice(0, 3).map(t => (
+                        <span key={t} style={{
+                          fontSize: 10, padding: "2px 7px", borderRadius: 4,
+                          background: "rgba(129,140,248,0.12)",
+                          color: "#818cf8",
+                          border: "1px solid rgba(129,140,248,0.3)",
+                          fontFamily: "JetBrains Mono"
+                        }}>
+                          ★ {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {i === 1 && result.unique_to_policy_2?.length > 0 && (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 4 }}>
+                      UNIQUE FOCUS AREAS
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {result.unique_to_policy_2.slice(0, 3).map(t => (
+                        <span key={t} style={{
+                          fontSize: 10, padding: "2px 7px", borderRadius: 4,
+                          background: "rgba(34,211,238,0.1)",
+                          color: "var(--cyan)",
+                          border: "1px solid rgba(34,211,238,0.25)",
+                          fontFamily: "JetBrains Mono"
+                        }}>
+                          ★ {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
-          {/* Insights */}
+          {/* Insights Panel */}
           <div className="card" style={{ padding: "22px 26px", borderColor: "rgba(245,158,11,0.25)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <Lightbulb size={15} color="#f59e0b" />
@@ -135,21 +178,24 @@ export default function Compare() {
               </span>
             </div>
 
-            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+            {/* Summary Row */}
+            <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
                 {result.same_sector
                   ? <><CheckCircle2 size={13} color="#10b981" /><span style={{ color: "#10b981" }}>Same sector</span></>
                   : <><XCircle size={13} color="#f43f5e" /><span style={{ color: "#f43f5e" }}>Different sectors</span></>
                 }
               </div>
+
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                Shared tags:{" "}
-                <span style={{ color: result.shared_tags.length ? "var(--cyan)" : "var(--text-dim)" }}>
-                  {result.shared_tags.length > 0 ? result.shared_tags.join(", ") : "None"}
+                Shared focus:{" "}
+                <span style={{ color: result.shared_tags?.length ? "var(--cyan)" : "var(--text-dim)" }}>
+                  {result.shared_tags?.length > 0 ? result.shared_tags.join(", ") : "None"}
                 </span>
               </div>
             </div>
 
+            {/* Insight Cards */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {result.insights.map((ins, i) => (
                 <div key={i} style={{
@@ -157,9 +203,33 @@ export default function Compare() {
                   padding: "10px 14px", borderRadius: 8,
                   background: "var(--bg-hover)", border: "1px solid var(--border)",
                 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", flexShrink: 0, marginTop: 5 }} />
-                  <span style={{ fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>{ins}</span>
+                  <div style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: i % 2 === 0 ? "#f59e0b" : "var(--cyan)",
+                    flexShrink: 0, marginTop: 5
+                  }} />
+                  <span style={{ fontSize: 13, color: "var(--text-main)", lineHeight: 1.6 }}>
+                    {ins}
+                  </span>
                 </div>
+              ))}
+            </div>
+
+            {/* Source Links */}
+            <div style={{ display: "flex", gap: 12, marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+              {[result.policy_1, result.policy_2].map((p, i) => (
+                p.source_url ? (
+                  <a key={i} href={p.source_url} target="_blank" rel="noreferrer"
+                    style={{
+                      fontSize: 11, color: i === 0 ? "#818cf8" : "var(--cyan)",
+                      textDecoration: "none", fontFamily: "JetBrains Mono",
+                      padding: "4px 10px", borderRadius: 6,
+                      border: `1px solid ${i === 0 ? "rgba(129,140,248,0.2)" : "rgba(34,211,238,0.2)"}`,
+                      background: i === 0 ? "rgba(129,140,248,0.06)" : "rgba(34,211,238,0.06)",
+                    }}>
+                    ↗ Policy {i === 0 ? "A" : "B"} Source
+                  </a>
+                ) : null
               ))}
             </div>
           </div>
@@ -168,12 +238,11 @@ export default function Compare() {
 
       {loading && <LoadingSpinner label="Running comparison analysis..." />}
 
-      {/* Sector Filter + Policy Grid — hidden after step 3 */}
+      {/* Sector Filter + Policy Grid */}
       {step < 3 && (
         <>
-          {/* ← NEW: Sector Filter Bar */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            {["", "AI Governance", "Cybersecurity", "Data Privacy"].map(s => (
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+            {["", "AI Governance", "Cybersecurity", "Data Privacy", "Healthcare AI", "Financial Regulation"].map(s => (
               <button key={s} onClick={() => setSectorFilter(s)}
                 style={{
                   padding: "6px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer",
@@ -186,15 +255,16 @@ export default function Compare() {
             ))}
           </div>
 
-          {/* Policy Grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
-            {policies.map((p, i) => (
-              <PolicyCard
-                key={p.id} policy={p} delay={(i % 5) + 1}
-                selectable selected={sel1?.id === p.id}
-                onSelect={handleSelect}
-              />
-            ))}
+          <div style={{ maxHeight: 600, overflowY: "auto", paddingRight: 4 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+              {policies.map((p, i) => (
+                <PolicyCard
+                  key={p.id} policy={p} delay={(i % 5) + 1}
+                  selectable selected={sel1?.id === p.id}
+                  onSelect={handleSelect}
+                />
+              ))}
+            </div>
           </div>
         </>
       )}

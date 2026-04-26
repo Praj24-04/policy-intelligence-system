@@ -23,12 +23,14 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function Dashboard() {
-  const [overview, setOverview]   = useState(null);
-  const [sectors,  setSectors]    = useState([]);
-  const [regions,  setRegions]    = useState([]);
-  const [trends,   setTrends]     = useState([]);
-  const [countries,setCountries]  = useState([]);
-  const [loading,  setLoading]    = useState(true);
+  const [overview,     setOverview]     = useState(null);
+  const [sectors,      setSectors]      = useState([]);
+  const [regions,      setRegions]      = useState([]);
+  const [trends,       setTrends]       = useState([]);
+  const [countries,    setCountries]    = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [fetchStatus,  setFetchStatus]  = useState(null);
+  const [fetching,     setFetching]     = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -42,7 +44,27 @@ export default function Dashboard() {
         .map(([name, value]) => ({ name: name.replace("European Union","EU").replace("United States","USA").replace("United Kingdom","UK"), value })));
       setLoading(false);
     });
+
+    // Fetch live pipeline status
+    fetch("http://localhost:8000/api/fetch/status")
+      .then(r => r.json())
+      .then(setFetchStatus)
+      .catch(() => {});
   }, []);
+
+  const triggerFetch = async () => {
+    setFetching(true);
+    try {
+      await fetch("http://localhost:8000/api/fetch/trigger", { method: "POST" });
+      setTimeout(() => {
+        fetch("http://localhost:8000/api/fetch/status")
+          .then(r => r.json())
+          .then(d => { setFetchStatus(d); setFetching(false); });
+      }, 5000);
+    } catch {
+      setFetching(false);
+    }
+  };
 
   if (loading) return <LoadingSpinner label="Loading intelligence data..." />;
 
@@ -67,6 +89,39 @@ export default function Dashboard() {
         <StatCard label="Countries Covered" value={overview?.total_countries} sub="Unique jurisdictions"  accent="indigo" delay={2} />
         <StatCard label="Sectors Tracked"   value={overview?.total_sectors}   sub="AI · Cyber · Privacy"  accent="green"  delay={3} />
         <StatCard label="Regions Mapped"    value={overview?.total_regions}   sub="Global coverage"       accent="amber"  delay={4} />
+      </div>
+
+      {/* Live Data Pipeline Banner */}
+      <div className="card fade-up" style={{
+        padding: "16px 20px", marginBottom: 16,
+        borderColor: "rgba(34,211,238,0.2)",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        flexWrap: "wrap", gap: 12,
+      }}>
+        <div>
+          <div style={{
+            fontSize: 11, color: "var(--cyan)",
+            fontFamily: "JetBrains Mono", marginBottom: 4
+          }}>
+            LIVE DATA PIPELINE
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-main)", marginBottom: 2 }}>
+            {fetchStatus?.live_fetched || 0} live policies · {fetchStatus?.curated || 0} curated · Auto-updates every 24h
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>
+            Sources: OECD · CISA · EUR-Lex · ENISA
+          </div>
+        </div>
+        <button onClick={triggerFetch} disabled={fetching} style={{
+          padding: "8px 18px", borderRadius: 8,
+          background: fetching ? "var(--bg-hover)" : "rgba(34,211,238,0.1)",
+          border: `1px solid ${fetching ? "var(--border)" : "rgba(34,211,238,0.3)"}`,
+          color: fetching ? "var(--text-muted)" : "var(--cyan)",
+          fontSize: 12, cursor: fetching ? "not-allowed" : "pointer",
+          fontFamily: "JetBrains Mono", transition: "all 0.2s",
+        }}>
+          {fetching ? "⟳ Fetching..." : "⟳ Fetch Now"}
+        </button>
       </div>
 
       {/* Charts Row 1 */}

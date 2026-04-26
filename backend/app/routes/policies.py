@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from typing import Optional
 from app.services.nlp_service import load_policies, get_policy_by_id
 
@@ -10,10 +10,8 @@ def get_policies(
     region: Optional[str] = None,
     search: Optional[str] = None,
     status: Optional[str] = None,
-    limit: Optional[int] = Query(10, description="Number of policies to return"),
-    offset: Optional[int] = Query(0, description="Number of policies to skip"),
 ):
-    return load_policies(sector=sector, region=region, search=search, status=status, limit=limit, offset=offset)
+    return load_policies(sector=sector, region=region, search=search, status=status)
 
 @router.get("/sectors")
 def get_sectors():
@@ -36,4 +34,4 @@ def get_policy(policy_id: str):
     p = get_policy_by_id(policy_id)
     if not p:
         return {"error": "Policy not found"}
-    return p
+    return p 

@@ -1,17 +1,16 @@
 import { NavLink } from "react-router-dom";
-import {
-  LayoutDashboard, ScrollText, GitCompare,
-  BarChart3, Globe2, Zap
-} from "lucide-react";
+import { LayoutDashboard, ScrollText, GitCompare, BarChart3, Globe2, Zap, Sparkles, Upload } from "lucide-react";
 
 const links = [
-  { to: "/",          icon: LayoutDashboard, label: "Dashboard"  },
-  { to: "/policies",  icon: ScrollText,      label: "Policies"   },
-  { to: "/compare",   icon: GitCompare,      label: "Compare"    },
-  { to: "/analytics", icon: BarChart3,       label: "Analytics"  },
+  { to: "/",          icon: LayoutDashboard, label: "Dashboard"   },
+  { to: "/policies",  icon: ScrollText,      label: "Policies"    },
+  { to: "/compare",   icon: GitCompare,      label: "Compare"     },
+  { to: "/analytics", icon: BarChart3,       label: "Analytics"   },
+  { to: "/recommend", icon: Sparkles,        label: "Recommender" },
+  { to: "/upload",    icon: Upload,          label: "Upload PDF"  },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ user, onLogout }) {
   return (
     <aside style={{
       width: 220,
@@ -66,19 +65,53 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer badge */}
+      {/* User + Logout Footer */}
       <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)" }}>
+        {/* NLP Badge */}
         <div style={{
-          background: "rgba(34,211,238,0.06)", border: "1px solid rgba(34,211,238,0.15)",
-          borderRadius: 8, padding: "10px 12px",
+          background: "rgba(34,211,238,0.06)",
+          border: "1px solid rgba(34,211,238,0.15)",
+          borderRadius: 8, padding: "8px 12px", marginBottom: 10,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
             <Zap size={11} color="var(--cyan)" />
-            <span style={{ fontSize: 11, color: "var(--cyan)", fontFamily: "JetBrains Mono" }}>NLP ACTIVE</span>
+            <span style={{ fontSize: 11, color: "var(--cyan)", fontFamily: "JetBrains Mono" }}>
+              NLP ACTIVE
+            </span>
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
             spaCy NER · 30 policies indexed
           </div>
+        </div>
+
+        {/* User Info */}
+        <div style={{
+          display: "flex", alignItems: "center",
+          justifyContent: "space-between",
+          padding: "8px 10px", borderRadius: 8,
+          background: "var(--bg-hover)",
+          border: "1px solid var(--border)",
+        }}>
+          <div>
+            <div style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 500 }}>
+              {user?.full_name}
+            </div>
+            <div style={{
+              fontSize: 10, color: "var(--text-muted)",
+              fontFamily: "JetBrains Mono"
+            }}>
+              {user?.role?.toUpperCase()}
+            </div>
+          </div>
+          <button onClick={onLogout} style={{
+            background: "rgba(244,63,94,0.1)",
+            border: "1px solid rgba(244,63,94,0.2)",
+            color: "#f43f5e", borderRadius: 6,
+            padding: "4px 8px", fontSize: 11,
+            cursor: "pointer", fontFamily: "JetBrains Mono"
+          }}>
+            EXIT
+          </button>
         </div>
       </div>
     </aside>
