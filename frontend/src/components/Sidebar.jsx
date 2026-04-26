@@ -37,7 +37,7 @@ export default function Sidebar({ user, onLogout }) {
               PolicyIQ
             </div>
             <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>
-              v1.0 · 3 sectors
+              v2.0 · 5 sectors
             </div>
           </div>
         </div>

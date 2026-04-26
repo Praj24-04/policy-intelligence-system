@@ -79,7 +79,7 @@ export default function Dashboard() {
           </h1>
         </div>
         <p style={{ color: "var(--text-muted)", fontSize: 13, paddingLeft: 13 }}>
-          Global policy landscape · 3 sectors · Real-time NLP analysis
+         Global policy landscape · 5 sectors · Live data pipeline · ML-powered recommendations
         </p>
       </div>
 
