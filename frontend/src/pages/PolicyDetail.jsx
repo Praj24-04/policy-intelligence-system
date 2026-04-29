@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { fetchPolicy } from "../services/api";
 import SectorBadge from "../components/SectorBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { ArrowLeft, ExternalLink, MapPin, Calendar, Tag } from "lucide-react";
+import { ArrowLeft, ExternalLink, MapPin, Calendar } from "lucide-react";
 
 export default function PolicyDetail() {
   const { id } = useParams();
@@ -35,8 +35,8 @@ export default function PolicyDetail() {
 
         <div style={{ display: "flex", gap: 20, marginBottom: 24, flexWrap: "wrap" }}>
           {[
-            { icon: MapPin,    val: policy.country },
-            { icon: Calendar,  val: policy.year ?? "N/A" },
+            { icon: MapPin,   val: policy.country },
+            { icon: Calendar, val: policy.year ?? "N/A" },
           ].map(({ icon: Icon, val }, i) => (
             <span key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-muted)" }}>
               <Icon size={13} /> {val}
@@ -55,6 +55,7 @@ export default function PolicyDetail() {
           </span>
         </div>
 
+        {/* Policy Content */}
         <div style={{ background: "var(--bg-hover)", border: "1px solid var(--border)", borderRadius: 10, padding: "20px 22px", marginBottom: 20 }}>
           <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", letterSpacing: "0.1em", marginBottom: 10 }}>
             POLICY CONTENT
@@ -81,6 +82,90 @@ export default function PolicyDetail() {
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── Penalty Fines — Auto Extracted ── */}
+        {policy.penalty_fines?.has_fines && (
+          <div style={{
+            background: "rgba(244,63,94,0.05)",
+            border: "1px solid rgba(244,63,94,0.2)",
+            borderRadius: 10, padding: "18px 22px", marginBottom: 20
+          }}>
+            <div style={{
+              fontSize: 11, color: "#f43f5e",
+              fontFamily: "JetBrains Mono",
+              letterSpacing: "0.1em", marginBottom: 14
+            }}>
+              ⚖ PENALTY & ENFORCEMENT — AUTO EXTRACTED
+            </div>
+
+            {/* Summary */}
+            <div style={{
+              fontSize: 14, fontFamily: "Syne", fontWeight: 700,
+              color: "#f43f5e", marginBottom: 14
+            }}>
+              {policy.penalty_fines.summary}
+            </div>
+
+            {/* Monetary Fines */}
+            {policy.penalty_fines.monetary_fines?.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 8 }}>
+                  MONETARY PENALTIES
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {policy.penalty_fines.monetary_fines.map((f, i) => (
+                    <div key={i} style={{
+                      padding: "8px 14px", borderRadius: 8,
+                      background: "rgba(244,63,94,0.08)",
+                      border: "1px solid rgba(244,63,94,0.2)",
+                    }}>
+                      <div style={{ fontSize: 16, fontFamily: "Syne", fontWeight: 800, color: "#f43f5e" }}>
+                        {f.amount}
+                      </div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>
+                        {f.currency}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Percentage Fines */}
+            {policy.penalty_fines.percentage_fines?.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 8 }}>
+                  REVENUE-BASED PENALTIES
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {policy.penalty_fines.percentage_fines.map((f, i) => (
+                    <span key={i} style={{
+                      padding: "6px 14px", borderRadius: 8,
+                      background: "rgba(245,158,11,0.1)",
+                      border: "1px solid rgba(245,158,11,0.2)",
+                      color: "#f59e0b", fontFamily: "Syne",
+                      fontWeight: 700, fontSize: 15
+                    }}>
+                      {f.percentage} of revenue
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Imprisonment */}
+            {policy.penalty_fines.imprisonment && (
+              <div style={{
+                padding: "8px 14px", borderRadius: 8,
+                background: "rgba(99,102,241,0.08)",
+                border: "1px solid rgba(99,102,241,0.2)",
+                fontSize: 13, color: "#a5b4fc"
+              }}>
+                ⚠ {policy.penalty_fines.imprisonment}
+              </div>
+            )}
           </div>
         )}
 

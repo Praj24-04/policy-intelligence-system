@@ -1958,4 +1958,766 @@ POLICIES = [
         "version": "1.0",
         "source_url": "https://www.centralbank.go.ke/digital-financial-services/"
     },
+# ─────────────────────────────────────────
+    # POSH POLICIES (posh_001 to posh_010)
+    # ─────────────────────────────────────────
+    {
+        "id": "posh_001",
+        "title": "India POSH Act — Prevention of Sexual Harassment at Workplace",
+        "sector": "POSH Policies",
+        "region": "Asia",
+        "country": "India",
+        "content": (
+            "India's Sexual Harassment of Women at Workplace Act 2013 mandates "
+            "every organization with 10 or more employees to constitute an Internal "
+            "Complaints Committee. The act defines sexual harassment broadly including "
+            "unwelcome physical, verbal, or non-verbal conduct of a sexual nature. "
+            "Employers must conduct awareness programs, display policy notices, and "
+            "file annual reports with district officers. Non-compliance results in "
+            "fines up to 50,000 rupees and cancellation of business licenses. "
+            "The act applies to all workplace settings including remote work arrangements "
+            "and protects all women including contractual and domestic workers."
+        ),
+        "tags": ["sexual harassment", "workplace safety", "ICC", "compliance", "women protection"],
+        "status": "Active",
+        "year": 2013,
+        "version": "2.0",
+        "source_url": "https://wcd.nic.in/act/sexual-harassment-women-workplace-prevention-prohibition-and-redressal-act-2013"
+    },
+    {
+        "id": "posh_002",
+        "title": "UK Equality Act — Workplace Harassment Framework",
+        "sector": "POSH Policies",
+        "region": "Europe",
+        "country": "United Kingdom",
+        "content": (
+            "The UK Equality Act 2010 provides comprehensive protection against "
+            "harassment related to protected characteristics including sex, race, "
+            "disability, religion, and sexual orientation in workplace settings. "
+            "Employers have a duty to prevent harassment and can be held vicariously "
+            "liable for harassment by their employees. "
+            "The Worker Protection Act 2023 strengthens obligations requiring employers "
+            "to take reasonable steps to prevent sexual harassment proactively. "
+            "Employment tribunals can award unlimited compensation for harassment claims "
+            "including injury to feelings, loss of earnings, and personal injury. "
+            "Third-party harassment protections extend employer liability to customer "
+            "and client conduct against employees."
+        ),
+        "tags": ["equality", "harassment prevention", "employer liability", "protected characteristics"],
+        "status": "Active",
+        "year": 2023,
+        "version": "2.0",
+        "source_url": "https://www.legislation.gov.uk/ukpga/2010/15/contents"
+    },
+    {
+        "id": "posh_003",
+        "title": "EU Directive on Combating Violence Against Women",
+        "sector": "POSH Policies",
+        "region": "Europe",
+        "country": "European Union",
+        "content": (
+            "The European Union Directive on combating violence against women and "
+            "domestic violence establishes minimum standards for prevention, "
+            "protection, and support across member states. "
+            "The directive criminalizes cyber violence including non-consensual sharing "
+            "of intimate images and online harassment targeting women. "
+            "Member states must ensure specialist support services, emergency barring "
+            "orders, and risk assessment procedures for victims. "
+            "Workplace harassment provisions require employers to implement prevention "
+            "policies and provide training to all employees. "
+            "The directive addresses structural inequalities and requires member states "
+            "to address root causes of gender-based violence through education."
+        ),
+        "tags": ["gender-based violence", "cyber harassment", "workplace protection", "EU directive"],
+        "status": "Active",
+        "year": 2024,
+        "version": "1.0",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024L1385"
+    },
+    {
+        "id": "posh_004",
+        "title": "US Title VII — Sexual Harassment in Employment",
+        "sector": "POSH Policies",
+        "region": "North America",
+        "country": "United States",
+        "content": (
+            "Title VII of the Civil Rights Act prohibits sexual harassment as a form "
+            "of sex discrimination in employment across the United States. "
+            "The Equal Employment Opportunity Commission enforces Title VII and "
+            "provides guidelines defining quid pro quo and hostile work environment "
+            "harassment. Employers are strictly liable for supervisor harassment "
+            "and can be liable for co-worker harassment if they knew or should "
+            "have known about it. The #MeToo movement prompted significant EEOC "
+            "guidance updates strengthening protections for all workers. "
+            "Employers must maintain written anti-harassment policies, conduct "
+            "regular training, and establish complaint procedures."
+        ),
+        "tags": ["Title VII", "EEOC", "hostile work environment", "quid pro quo", "anti-discrimination"],
+        "status": "Active",
+        "year": 2023,
+        "version": "3.0",
+        "source_url": "https://www.eeoc.gov/harassment"
+    },
+    {
+        "id": "posh_005",
+        "title": "Australia Sex Discrimination Act — Positive Duty",
+        "sector": "POSH Policies",
+        "region": "Oceania",
+        "country": "Australia",
+        "content": (
+            "Australia's Sex Discrimination Act amendments introduce a positive duty "
+            "requiring employers to take reasonable and proportionate measures to "
+            "eliminate sexual harassment, sex discrimination, and hostile workplace "
+            "conduct before they occur. "
+            "The Australian Human Rights Commission gains new powers to investigate "
+            "and enforce the positive duty through compliance audits of organizations. "
+            "Non-compliance with the positive duty can result in enforceable undertakings "
+            "and court-ordered compliance programs. "
+            "The amendment extends protections to members of professional associations, "
+            "students, and volunteers not previously covered. "
+            "Organizations must document their prevention measures and regularly "
+            "assess effectiveness of their sexual harassment prevention strategies."
+        ),
+        "tags": ["positive duty", "prevention", "AHRC", "workplace safety", "Australia"],
+        "status": "Active",
+        "year": 2022,
+        "version": "1.0",
+        "source_url": "https://www.humanrights.gov.au/our-work/sex-discrimination/publications/positive-duty-under-sex-discrimination-act"
+    },
+    {
+        "id": "posh_006",
+        "title": "Canada Workplace Harassment Prevention Regulations",
+        "sector": "POSH Policies",
+        "region": "North America",
+        "country": "Canada",
+        "content": (
+            "Canada's Work Place Harassment and Violence Prevention Regulations "
+            "under the Canada Labour Code require federally regulated employers to "
+            "implement comprehensive harassment and violence prevention programs. "
+            "Employers must conduct joint workplace assessments, develop prevention "
+            "plans, and provide training to all employees and supervisors annually. "
+            "A resolution process for harassment complaints involves negotiated "
+            "resolution, conciliation, and investigation stages. "
+            "Employers must maintain records of all harassment occurrences and "
+            "submit annual reports to Employment and Social Development Canada. "
+            "The regulations specifically address domestic violence spillover into "
+            "the workplace requiring protective measures for affected employees."
+        ),
+        "tags": ["workplace harassment", "prevention plan", "federal regulations", "Canada"],
+        "status": "Active",
+        "year": 2021,
+        "version": "1.0",
+        "source_url": "https://www.canada.ca/en/employment-social-development/programs/workplace-health-safety/violence-harassment.html"
+    },
+    {
+        "id": "posh_007",
+        "title": "Singapore Tripartite Guidelines on Workplace Harassment",
+        "sector": "POSH Policies",
+        "region": "Asia",
+        "country": "Singapore",
+        "content": (
+            "Singapore's Tripartite Guidelines on Workplace Harassment provide "
+            "practical guidance for employers, employees, and unions on addressing "
+            "harassment including sexual harassment in workplaces. "
+            "The Protection from Harassment Act provides civil and criminal remedies "
+            "for workplace harassment victims including protection orders and damages. "
+            "Employers are expected to have written anti-harassment policies, "
+            "designated points of contact for complaints, and fair investigation processes. "
+            "The Tripartite Alliance for Fair and Progressive Employment Practices "
+            "supports organizations in building harassment-free workplace cultures. "
+            "Singapore's approach emphasizes restorative outcomes and mediation "
+            "through the Community Disputes Resolution Tribunal."
+        ),
+        "tags": ["tripartite", "Protection from Harassment Act", "mediation", "Singapore"],
+        "status": "Active",
+        "year": 2021,
+        "version": "2.0",
+        "source_url": "https://www.tal.sg/tafep/resources/advisories/tripartite-guidelines-on-workplace-harassment"
+    },
+    {
+        "id": "posh_008",
+        "title": "ILO Convention 190 — Violence and Harassment at Work",
+        "sector": "POSH Policies",
+        "region": "Global",
+        "country": "International",
+        "content": (
+            "The International Labour Organization Convention 190 is the first "
+            "international treaty specifically addressing violence and harassment "
+            "in the world of work. "
+            "The convention covers all workers in public and private sectors "
+            "including those in informal economy, domestic work, and online work. "
+            "Ratifying countries must adopt laws prohibiting workplace violence "
+            "and harassment, provide remedies and support for victims, and ensure "
+            "enforcement through labor inspection. "
+            "The convention recognizes gender-based violence as a human rights "
+            "violation requiring specific prevention measures. "
+            "Recommendation 206 accompanying the convention provides detailed "
+            "guidance on implementation including national action plans."
+        ),
+        "tags": ["ILO", "international convention", "gender-based violence", "informal economy"],
+        "status": "Active",
+        "year": 2019,
+        "version": "1.0",
+        "source_url": "https://www.ilo.org/dyn/normlex/en/f?p=NORMLEXPUB:12100:0::NO::P12100_ILO_CODE:C190"
+    },
+    {
+        "id": "posh_009",
+        "title": "South Africa Employment Equity Act — Harassment Code",
+        "sector": "POSH Policies",
+        "region": "Africa",
+        "country": "South Africa",
+        "content": (
+            "South Africa's Code of Good Practice on the Prevention and Elimination "
+            "of Harassment in the Workplace under the Employment Equity Act provides "
+            "comprehensive framework for addressing all forms of workplace harassment. "
+            "The code covers sexual harassment, racial harassment, and other forms "
+            "of harassment based on protected grounds including disability and religion. "
+            "Employers must develop and implement anti-harassment policies, provide "
+            "training, and establish confidential grievance procedures. "
+            "The Commission for Conciliation Mediation and Arbitration adjudicates "
+            "harassment disputes with remedies including compensation and reinstatement. "
+            "The code addresses power dynamics and intersectionality in harassment "
+            "recognizing multiple forms of discrimination can operate simultaneously."
+        ),
+        "tags": ["Employment Equity", "harassment code", "CCMA", "intersectionality", "South Africa"],
+        "status": "Active",
+        "year": 2022,
+        "version": "2.0",
+        "source_url": "https://www.gov.za/documents/employment-equity-act-code-good-practice-prevention-and-elimination-harassment-workplace"
+    },
+    {
+        "id": "posh_010",
+        "title": "Japan Act on Comprehensive Promotion of Labor Policies — Power Harassment",
+        "sector": "POSH Policies",
+        "region": "Asia",
+        "country": "Japan",
+        "content": (
+            "Japan's comprehensive labor policy amendments mandate employers to take "
+            "measures against power harassment known as power harassment or pawahara "
+            "in addition to sexual harassment obligations. "
+            "The Act requires employers to establish consultation services, investigate "
+            "complaints promptly, and protect complainants from retaliation. "
+            "The Ministry of Health Labour and Welfare provides detailed guidelines "
+            "defining power harassment through abuse of authority, psychological attacks, "
+            "isolation, excessive demands, and privacy invasion. "
+            "Large companies faced mandatory compliance from 2020 while SMEs joined "
+            "mandatory compliance from 2022. "
+            "Japan's approach uniquely addresses hierarchical workplace culture "
+            "making it internationally significant for addressing authority-based harassment."
+        ),
+        "tags": ["power harassment", "pawahara", "labor policy", "Japan", "employer obligations"],
+        "status": "Active",
+        "year": 2022,
+        "version": "1.0",
+        "source_url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/roudoukijun/jigyonushi/powerharassment.html"
+    },
+
+    # ─────────────────────────────────────────
+    # ESG POLICIES (esg_001 to esg_010)
+    # ─────────────────────────────────────────
+    {
+        "id": "esg_001",
+        "title": "EU Corporate Sustainability Reporting Directive — CSRD",
+        "sector": "ESG Policies",
+        "region": "Europe",
+        "country": "European Union",
+        "content": (
+            "The European Union Corporate Sustainability Reporting Directive requires "
+            "large companies and listed SMEs to report on environmental social and "
+            "governance matters using European Sustainability Reporting Standards. "
+            "Companies must disclose their impact on people and environment and how "
+            "sustainability matters affect their business model and strategy. "
+            "The double materiality principle requires reporting both impact materiality "
+            "and financial materiality of sustainability topics. "
+            "Third-party assurance of sustainability reports is mandatory ensuring "
+            "reliability of disclosed information. "
+            "The directive covers approximately 50,000 companies across Europe "
+            "significantly expanding the scope of mandatory ESG disclosure."
+        ),
+        "tags": ["CSRD", "ESG reporting", "double materiality", "sustainability disclosure"],
+        "status": "Active",
+        "year": 2023,
+        "version": "1.0",
+        "source_url": "https://finance.ec.europa.eu/capital-markets-union-and-financial-markets/company-reporting-and-auditing/company-reporting/corporate-sustainability-reporting_en"
+    },
+    {
+        "id": "esg_002",
+        "title": "SEC Climate Disclosure Rules — US ESG Reporting",
+        "sector": "ESG Policies",
+        "region": "North America",
+        "country": "United States",
+        "content": (
+            "The US Securities and Exchange Commission climate-related disclosure rules "
+            "require publicly listed companies to disclose climate risks material to "
+            "their business and greenhouse gas emissions in annual reports. "
+            "Large accelerated filers must disclose Scope 1 and 2 emissions with "
+            "assurance while Scope 3 emissions disclosure requirements remain under review. "
+            "Companies must disclose climate-related risks that have materially impacted "
+            "or are reasonably likely to impact business strategy and financial condition. "
+            "Board oversight of climate risks and management's role in assessing "
+            "climate-related risks must be described in disclosures. "
+            "The rules represent a significant shift toward standardized climate "
+            "reporting for US capital markets."
+        ),
+        "tags": ["SEC", "climate disclosure", "Scope emissions", "financial materiality", "ESG"],
+        "status": "Active",
+        "year": 2024,
+        "version": "1.0",
+        "source_url": "https://www.sec.gov/rules/final/2024/33-11275.pdf"
+    },
+    {
+        "id": "esg_003",
+        "title": "UK Sustainability Disclosure Requirements — FCA Framework",
+        "sector": "ESG Policies",
+        "region": "Europe",
+        "country": "United Kingdom",
+        "content": (
+            "The UK Financial Conduct Authority Sustainability Disclosure Requirements "
+            "establish anti-greenwashing rules and sustainable investment product labels "
+            "for UK financial markets. "
+            "Four sustainable investment labels cover sustainability focus, improvers, "
+            "impact, and mixed goals products with strict criteria for each category. "
+            "Asset managers must publish entity-level and product-level sustainability "
+            "reports providing consumers with comparable ESG information. "
+            "The anti-greenwashing rule requires all sustainability claims to be fair "
+            "clear and not misleading applying to all FCA-authorized firms. "
+            "The UK framework diverges from EU taxonomy approach taking a more "
+            "principles-based and market-driven approach to sustainable finance labeling."
+        ),
+        "tags": ["SDR", "anti-greenwashing", "sustainable labels", "FCA", "UK ESG"],
+        "status": "Active",
+        "year": 2023,
+        "version": "1.0",
+        "source_url": "https://www.fca.org.uk/publications/policy-statements/ps23-16-sustainability-disclosure-requirements-investment-labels"
+    },
+    {
+        "id": "esg_004",
+        "title": "India SEBI Business Responsibility and Sustainability Reporting",
+        "sector": "ESG Policies",
+        "region": "Asia",
+        "country": "India",
+        "content": (
+            "India's Securities and Exchange Board Business Responsibility and "
+            "Sustainability Reporting framework requires top listed companies to "
+            "disclose ESG performance against nine National Guidelines on Responsible "
+            "Business Conduct principles. "
+            "The framework covers environmental social and governance metrics including "
+            "energy consumption, water usage, waste management, employee welfare, "
+            "supply chain responsibility, and board diversity. "
+            "Leadership indicators represent aspirational disclosures while essential "
+            "indicators are mandatory for top 1000 listed companies by market cap. "
+            "India's BRSR framework aligns with global standards including GRI, SASB, "
+            "and TCFD recommendations making Indian ESG disclosures internationally comparable."
+        ),
+        "tags": ["BRSR", "SEBI", "responsible business", "sustainability reporting", "India ESG"],
+        "status": "Active",
+        "year": 2023,
+        "version": "2.0",
+        "source_url": "https://www.sebi.gov.in/legal/circulars/may-2021/business-responsibility-and-sustainability-reporting-by-listed-entities_50096.html"
+    },
+    {
+        "id": "esg_005",
+        "title": "ISSB — International Sustainability Standards S1 and S2",
+        "sector": "ESG Policies",
+        "region": "Global",
+        "country": "International",
+        "content": (
+            "The International Sustainability Standards Board standards S1 and S2 "
+            "establish the global baseline for sustainability-related financial disclosures. "
+            "IFRS S1 requires disclosure of material sustainability-related risks and "
+            "opportunities affecting enterprise value across short medium and long term. "
+            "IFRS S2 specifically addresses climate-related disclosures aligned with "
+            "Task Force on Climate-related Financial Disclosures recommendations. "
+            "The standards require governance disclosure about board oversight of "
+            "sustainability risks, strategy integration, risk management processes, "
+            "and metrics and targets. "
+            "Over 20 jurisdictions have committed to adopting or aligning with ISSB "
+            "standards making them the foundation of global ESG reporting convergence."
+        ),
+        "tags": ["ISSB", "IFRS S1", "IFRS S2", "TCFD", "global baseline", "sustainability standards"],
+        "status": "Active",
+        "year": 2023,
+        "version": "1.0",
+        "source_url": "https://www.ifrs.org/groups/international-sustainability-standards-board/"
+    },
+    {
+        "id": "esg_006",
+        "title": "Singapore Green Plan 2030 — ESG Corporate Obligations",
+        "sector": "ESG Policies",
+        "region": "Asia",
+        "country": "Singapore",
+        "content": (
+            "Singapore's Green Plan 2030 establishes whole-of-nation sustainability "
+            "commitments with specific corporate ESG obligations for listed companies. "
+            "SGX listed companies must comply with mandatory climate reporting aligned "
+            "with TCFD recommendations on phased timeline based on company size. "
+            "Financial institutions must implement MAS Environmental Risk Management "
+            "Guidelines assessing and managing environmental risks in lending and investment. "
+            "Singapore's taxonomy for sustainable finance classifies economic activities "
+            "facilitating transition to net-zero economy. "
+            "The plan includes mandatory packaging reporting, carbon tax escalation, "
+            "and green building standards affecting corporate operations."
+        ),
+        "tags": ["Green Plan 2030", "TCFD", "MAS", "carbon tax", "Singapore ESG"],
+        "status": "Active",
+        "year": 2021,
+        "version": "2.0",
+        "source_url": "https://www.greenplan.gov.sg/"
+    },
+    {
+        "id": "esg_007",
+        "title": "Australia ASIC Climate Risk Disclosure Guidance",
+        "sector": "ESG Policies",
+        "region": "Oceania",
+        "country": "Australia",
+        "content": (
+            "The Australian Securities and Investments Commission guidance on climate "
+            "risk disclosure requires listed companies to assess and disclose material "
+            "climate-related risks in annual reports and operating and financial reviews. "
+            "Australia's mandatory climate reporting legislation requires large entities "
+            "to disclose climate risks, opportunities, Scope 1 2 and 3 emissions, "
+            "transition plans, and scenario analysis from 2025. "
+            "The Australian Sustainability Reporting Standards align with ISSB standards "
+            "ensuring international comparability of Australian ESG disclosures. "
+            "Directors face personal liability for misleading climate disclosures "
+            "under the Corporations Act reinforcing accountability for ESG reporting."
+        ),
+        "tags": ["ASIC", "climate risk", "mandatory reporting", "directors liability", "Australia ESG"],
+        "status": "Active",
+        "year": 2024,
+        "version": "1.0",
+        "source_url": "https://asic.gov.au/regulatory-resources/financial-reporting-and-audit/reporting-to-asic/climate-related-financial-disclosure/"
+    },
+    {
+        "id": "esg_008",
+        "title": "EU Taxonomy Regulation — Sustainable Finance Classification",
+        "sector": "ESG Policies",
+        "region": "Europe",
+        "country": "European Union",
+        "content": (
+            "The European Union Taxonomy Regulation establishes a science-based "
+            "classification system determining which economic activities qualify as "
+            "environmentally sustainable for investment and reporting purposes. "
+            "Six environmental objectives cover climate change mitigation, adaptation, "
+            "water protection, circular economy transition, pollution prevention, "
+            "and biodiversity protection. "
+            "Activities must substantially contribute to at least one objective without "
+            "significantly harming others and meet minimum social safeguards. "
+            "Financial market participants and large companies must disclose the proportion "
+            "of their activities and investments aligned with the taxonomy. "
+            "The taxonomy is expanding to include social activities addressing employment "
+            "housing and healthcare as the social taxonomy."
+        ),
+        "tags": ["EU Taxonomy", "green finance", "environmental objectives", "sustainable investment"],
+        "status": "Active",
+        "year": 2020,
+        "version": "2.0",
+        "source_url": "https://finance.ec.europa.eu/sustainable-finance/tools-and-standards/eu-taxonomy-sustainable-activities_en"
+    },
+    {
+        "id": "esg_009",
+        "title": "South Africa King IV — Corporate Governance and ESG",
+        "sector": "ESG Policies",
+        "region": "Africa",
+        "country": "South Africa",
+        "content": (
+            "South Africa's King IV Report on Corporate Governance establishes "
+            "principles and recommended practices for ESG governance integration "
+            "at board level across South African organizations. "
+            "The integrated thinking approach requires boards to consider the full "
+            "range of capitals including natural social and human capital in strategy. "
+            "Organizations must produce integrated reports combining financial and "
+            "sustainability information demonstrating value creation across time horizons. "
+            "King IV applies to all organizations not just listed companies using "
+            "apply and explain approach rather than comply or explain. "
+            "South Africa's mandatory integrated reporting requirement for JSE-listed "
+            "companies makes it a global leader in sustainability disclosure."
+        ),
+        "tags": ["King IV", "integrated reporting", "corporate governance", "six capitals", "JSE"],
+        "status": "Active",
+        "year": 2016,
+        "version": "4.0",
+        "source_url": "https://www.iodsa.co.za/page/KingIV"
+    },
+    {
+        "id": "esg_010",
+        "title": "Brazil B3 Corporate Sustainability Index — ESG Listing Requirements",
+        "sector": "ESG Policies",
+        "region": "South America",
+        "country": "Brazil",
+        "content": (
+            "Brazil's B3 stock exchange Corporate Sustainability Index and ESG listing "
+            "requirements establish sustainability criteria for Brazilian listed companies. "
+            "Companies must disclose environmental social and governance performance "
+            "through the GRI framework and adhere to United Nations Global Compact principles. "
+            "B3 requires companies to publish annual sustainability reports and "
+            "respond to CDP climate, water, and forest questionnaires. "
+            "The Brazilian Capital Markets Association ANBIMA ESG classification "
+            "framework establishes standards for sustainable investment products. "
+            "Brazil's ESG regulation addresses specific national priorities including "
+            "Amazon deforestation supply chain, indigenous rights, and social inequality."
+        ),
+        "tags": ["B3", "GRI", "CDP", "Amazon", "Brazil ESG", "sustainable investment"],
+        "status": "Active",
+        "year": 2022,
+        "version": "2.0",
+        "source_url": "https://www.b3.com.br/en_us/b3/sustainability/corporate-sustainability-index-isg/"
+    },
+
+    # ─────────────────────────────────────────
+    # IoT AND ROBOTICS POLICIES (iot_001 to iot_010)
+    # ─────────────────────────────────────────
+    {
+        "id": "iot_001",
+        "title": "EU Cyber Resilience Act — IoT Security Requirements",
+        "sector": "IoT and Robotics",
+        "region": "Europe",
+        "country": "European Union",
+        "content": (
+            "The European Union Cyber Resilience Act establishes mandatory cybersecurity "
+            "requirements specifically for IoT devices and connected products sold in Europe. "
+            "Manufacturers must implement security by design ensuring devices ship with "
+            "no known vulnerabilities, secure default configurations, and access controls. "
+            "IoT devices must support security updates throughout their lifecycle with "
+            "manufacturers obligated to provide patches for minimum support periods. "
+            "Critical IoT products including smart home devices, industrial sensors, "
+            "and medical IoT face enhanced conformity assessment requirements. "
+            "The regulation addresses the growing attack surface from billions of "
+            "connected devices by establishing baseline security standards across Europe."
+        ),
+        "tags": ["IoT security", "connected devices", "security by design", "cyber resilience"],
+        "status": "Active",
+        "year": 2024,
+        "version": "1.0",
+        "source_url": "https://digital-strategy.ec.europa.eu/en/policies/cyber-resilience-act"
+    },
+    {
+        "id": "iot_002",
+        "title": "US IoT Cybersecurity Improvement Act",
+        "sector": "IoT and Robotics",
+        "region": "North America",
+        "country": "United States",
+        "content": (
+            "The US IoT Cybersecurity Improvement Act requires IoT devices purchased "
+            "by federal agencies to meet minimum security standards established by NIST. "
+            "NIST publishes guidelines covering secure development practices, identity "
+            "management, patching, configuration management, and incident detection "
+            "for IoT devices used in government operations. "
+            "Federal agencies must inventory all IoT devices and ensure vendors "
+            "comply with NIST standards before procurement. "
+            "The FCC IoT Cybersecurity Labeling Program extends voluntary standards "
+            "to consumer IoT devices through a trust mark system. "
+            "The legislation addresses security vulnerabilities in smart home devices, "
+            "industrial IoT, and government infrastructure expanding NIST's role."
+        ),
+        "tags": ["IoT cybersecurity", "NIST", "federal procurement", "IoT labeling", "FCC"],
+        "status": "Active",
+        "year": 2022,
+        "version": "1.0",
+        "source_url": "https://www.nist.gov/system/files/documents/2022/01/10/nist_iot_cybersecurity_act_white_paper_final.pdf"
+    },
+    {
+        "id": "iot_003",
+        "title": "UK Product Security and Telecommunications Infrastructure Act",
+        "sector": "IoT and Robotics",
+        "region": "Europe",
+        "country": "United Kingdom",
+        "content": (
+            "The UK Product Security and Telecommunications Infrastructure Act "
+            "establishes mandatory security requirements for consumer connectable "
+            "products including IoT devices, smart home appliances, and connected toys. "
+            "Products must meet three baseline security requirements: unique passwords "
+            "per device, a vulnerability disclosure policy, and transparency about "
+            "minimum security update periods. "
+            "The Office for Product Safety and Standards enforces compliance with "
+            "powers to prohibit sale of non-compliant products and impose fines. "
+            "Manufacturers, importers, and distributors all carry compliance obligations "
+            "creating supply chain accountability for IoT security. "
+            "The act represents a significant shift from voluntary to mandatory "
+            "baseline security standards for UK consumer IoT market."
+        ),
+        "tags": ["PSTI", "consumer IoT", "mandatory security", "unique passwords", "UK IoT"],
+        "status": "Active",
+        "year": 2022,
+        "version": "1.0",
+        "source_url": "https://www.legislation.gov.uk/ukpga/2022/46/contents"
+    },
+    {
+        "id": "iot_004",
+        "title": "EU Machinery Regulation — Robotics Safety Standards",
+        "sector": "IoT and Robotics",
+        "region": "Europe",
+        "country": "European Union",
+        "content": (
+            "The European Union Machinery Regulation 2023 updates safety requirements "
+            "for machinery including industrial robots, collaborative robots, and "
+            "autonomous mobile robots deployed in manufacturing and logistics. "
+            "The regulation addresses AI and machine learning in machinery requiring "
+            "safety measures for systems that modify their behavior through learning. "
+            "Collaborative robots working alongside humans must meet specific safety "
+            "standards for force, speed, and proximity monitoring. "
+            "Manufacturers must conduct risk assessments covering entire operational "
+            "lifecycle including reasonably foreseeable misuse of robotic systems. "
+            "The regulation integrates cybersecurity requirements recognizing that "
+            "connected industrial robots face both physical and digital safety risks."
+        ),
+        "tags": ["machinery regulation", "collaborative robots", "safety standards", "AI machinery"],
+        "status": "Active",
+        "year": 2023,
+        "version": "1.0",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32023R1230"
+    },
+    {
+        "id": "iot_005",
+        "title": "Japan Robot Safety Standards — Industrial and Service Robots",
+        "sector": "IoT and Robotics",
+        "region": "Asia",
+        "country": "Japan",
+        "content": (
+            "Japan's robot safety standards through the Ministry of Economy Trade "
+            "and Industry address industrial robots, service robots, and care robots "
+            "deployed in manufacturing, healthcare, and public spaces. "
+            "Standards cover mechanical safety, functional safety, human-robot "
+            "interaction safety, and cybersecurity for networked robotic systems. "
+            "Japan leads global development of ISO standards for service robots "
+            "through its influential position in international standardization bodies. "
+            "Care robot regulations specifically address robots assisting elderly "
+            "populations with mobility, monitoring, and companionship functions. "
+            "Japan's New Robot Strategy targets deploying robots widely across "
+            "manufacturing, agriculture, infrastructure, and disaster response sectors."
+        ),
+        "tags": ["robot safety", "service robots", "care robots", "ISO standards", "Japan robotics"],
+        "status": "Active",
+        "year": 2022,
+        "version": "2.0",
+        "source_url": "https://www.meti.go.jp/english/policy/mono_info_service/robot/index.html"
+    },
+    {
+        "id": "iot_006",
+        "title": "Singapore IoT Security Standards — IMDA Framework",
+        "sector": "IoT and Robotics",
+        "region": "Asia",
+        "country": "Singapore",
+        "content": (
+            "Singapore's Infocomm Media Development Authority IoT security framework "
+            "establishes voluntary guidelines and certification schemes for IoT "
+            "devices deployed in Singapore's smart nation infrastructure. "
+            "The Cybersecurity Labelling Scheme for IoT devices provides four rating "
+            "levels helping consumers identify security-rated smart home products. "
+            "Critical IoT infrastructure in healthcare, transport, and utilities "
+            "must comply with mandatory security standards under the Cybersecurity Act. "
+            "Singapore's smart city initiatives including autonomous vehicles and "
+            "intelligent transport systems have specific IoT security requirements. "
+            "The framework positions Singapore as regional hub for IoT security "
+            "standards development and testing services for ASEAN markets."
+        ),
+        "tags": ["IMDA", "IoT labelling", "smart nation", "cybersecurity scheme", "Singapore IoT"],
+        "status": "Active",
+        "year": 2021,
+        "version": "2.0",
+        "source_url": "https://www.csa.gov.sg/our-programmes/cybersecurity-labelling/products/cls-iot"
+    },
+    {
+        "id": "iot_007",
+        "title": "China IoT Development Plan — Security and Standards",
+        "sector": "IoT and Robotics",
+        "region": "Asia",
+        "country": "China",
+        "content": (
+            "China's IoT development plan establishes comprehensive standards for "
+            "IoT device security, data governance, and network infrastructure "
+            "supporting the world's largest IoT deployment. "
+            "The Ministry of Industry and Information Technology mandates security "
+            "assessments for IoT devices connected to critical information infrastructure. "
+            "China's national IoT standards cover device identity, communication "
+            "security, data encryption, and vulnerability management across industrial "
+            "and consumer IoT ecosystems. "
+            "Personal data collected by IoT devices must comply with China's Personal "
+            "Information Protection Law with specific provisions for sensor data. "
+            "China's industrial IoT standards support smart manufacturing under the "
+            "Made in China 2025 initiative requiring certified security components."
+        ),
+        "tags": ["China IoT", "industrial IoT", "MIIT", "smart manufacturing", "data security"],
+        "status": "Active",
+        "year": 2022,
+        "version": "2.0",
+        "source_url": "http://www.miit.gov.cn/jgsj/xgj/wjfb/art/2022/art_6dcd4c48b4154ca09f5b4a7d2e48d1c0.html"
+    },
+    {
+        "id": "iot_008",
+        "title": "India IoT Policy Framework — MeitY Guidelines",
+        "sector": "IoT and Robotics",
+        "region": "Asia",
+        "country": "India",
+        "content": (
+            "India's Ministry of Electronics and Information Technology IoT policy "
+            "framework provides guidelines for IoT ecosystem development including "
+            "security standards, data governance, and spectrum allocation. "
+            "The framework addresses IoT deployment across smart cities, agriculture, "
+            "healthcare, and industrial automation targeting 1 billion IoT connections. "
+            "IoT devices used in government smart city projects must comply with "
+            "BIS certification requirements for minimum security standards. "
+            "India's Data Protection Board oversight extends to IoT data collection "
+            "requiring purpose limitation and data minimization for sensor data. "
+            "The framework promotes domestic IoT manufacturing through production "
+            "linked incentive schemes reducing dependency on imported components."
+        ),
+        "tags": ["MeitY", "smart cities", "BIS certification", "India IoT", "domestic manufacturing"],
+        "status": "Active",
+        "year": 2023,
+        "version": "2.0",
+        "source_url": "https://www.meity.gov.in/content/internet-things"
+    },
+    {
+        "id": "iot_009",
+        "title": "Australia IoT Security Code of Practice",
+        "sector": "IoT and Robotics",
+        "region": "Oceania",
+        "country": "Australia",
+        "content": (
+            "Australia's voluntary Code of Practice for consumer IoT security "
+            "establishes thirteen principles for manufacturers, retailers, and "
+            "developers of connected consumer devices. "
+            "Principles cover no default passwords, vulnerability disclosure, "
+            "software update support, secure communications, minimized attack surface, "
+            "and protection of personal data stored on IoT devices. "
+            "The Australian Cyber Security Centre provides implementation guides "
+            "helping manufacturers assess their IoT products against each principle. "
+            "Australia's IoT security strategy integrates with the broader Cybersecurity "
+            "Strategy 2023-2030 cyber shield framework for product security. "
+            "Mandatory standards are planned to replace voluntary code following "
+            "international developments particularly the UK PSTI Act model."
+        ),
+        "tags": ["IoT code", "consumer security", "ACSC", "voluntary standards", "Australia IoT"],
+        "status": "Active",
+        "year": 2020,
+        "version": "1.0",
+        "source_url": "https://www.homeaffairs.gov.au/cyber-security-subsite/files/code-of-practice.pdf"
+    },
+    {
+        "id": "iot_010",
+        "title": "ISO IEC 27400 — IoT Security and Privacy Guidelines",
+        "sector": "IoT and Robotics",
+        "region": "Global",
+        "country": "International",
+        "content": (
+            "ISO IEC 27400 provides international guidelines for security and privacy "
+            "in IoT ecosystems covering device manufacturers, service providers, "
+            "and IoT deployers across all industry sectors. "
+            "The standard addresses 27 security and privacy controls specifically "
+            "designed for IoT constraints including limited processing power, "
+            "battery limitations, and network connectivity variability. "
+            "Controls cover secure bootstrapping, device identity, firmware updates, "
+            "data minimization, user transparency, and end-of-life device management. "
+            "The standard complements ISO 27001 information security management "
+            "providing IoT-specific implementation guidance for certified organizations. "
+            "International adoption enables cross-border interoperability of IoT "
+            "security certifications reducing duplicative compliance requirements."
+        ),
+        "tags": ["ISO 27400", "IoT standards", "international", "privacy controls", "interoperability"],
+        "status": "Active",
+        "year": 2022,
+        "version": "1.0",
+        "source_url": "https://www.iso.org/standard/73675.html"
+    },
 ]

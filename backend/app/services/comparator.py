@@ -1,4 +1,5 @@
 from app.services.nlp_service import get_policy_by_id
+from app.services.fine_extractor import extract_fines
 
 def compare_policies(id1: str, id2: str) -> dict:
     p1 = get_policy_by_id(id1)
@@ -100,8 +101,31 @@ def compare_policies(id1: str, id2: str) -> dict:
             f"organizations operating across both jurisdictions face compounding compliance requirements."
         )
 
+    # ── Penalty Fine Comparison ───────────────────────────────
+    p1_fines = extract_fines(p1.get("content", ""))
+    p2_fines = extract_fines(p2.get("content", ""))
+
+    if p1_fines and p2_fines and p1_fines.get("has_fines") and p2_fines.get("has_fines"):
+        insights.append(
+            f"Both policies enforce financial penalties. "
+            f"{p1['country']}: {p1_fines.get('summary', 'penalties apply')}. "
+            f"{p2['country']}: {p2_fines.get('summary', 'penalties apply')}."
+        )
+    elif p1_fines and p1_fines.get("has_fines") and not (p2_fines and p2_fines.get("has_fines")):
+        insights.append(
+            f"'{p1['title'][:40]}...' enforces explicit financial penalties ({p1_fines.get('summary', '')}), "
+            f"while '{p2['title'][:40]}...' does not specify monetary sanctions."
+        )
+    elif p2_fines and p2_fines.get("has_fines") and not (p1_fines and p1_fines.get("has_fines")):
+        insights.append(
+            f"'{p2['title'][:40]}...' enforces explicit financial penalties ({p2_fines.get('summary', '')}), "
+            f"while '{p1['title'][:40]}...' does not specify monetary sanctions."
+        )
+
     # ── Adoption Recommendation ───────────────────────────────
     if shared_tags and not same_sector:
+        newer = p1 if (p1.get("year") or 0) > (p2.get("year") or 0) else p2
+        older = p2 if newer == p1 else p1
         insights.append(
             f"Policy makers in emerging economies could prioritize "
             f"'{newer['title'][:40]}...' as a more current framework, "
@@ -109,8 +133,14 @@ def compare_policies(id1: str, id2: str) -> dict:
         )
 
     return {
-        "policy_1": {k: p1[k] for k in ["id", "title", "country", "sector", "region", "year", "tags", "status", "source_url"]},
-        "policy_2": {k: p2[k] for k in ["id", "title", "country", "sector", "region", "year", "tags", "status", "source_url"]},
+        "policy_1": {
+            **{k: p1[k] for k in ["id", "title", "country", "sector", "region", "year", "tags", "status", "source_url"]},
+            "penalty_fines": p1_fines
+        },
+        "policy_2": {
+            **{k: p2[k] for k in ["id", "title", "country", "sector", "region", "year", "tags", "status", "source_url"]},
+            "penalty_fines": p2_fines
+        },
         "same_sector": same_sector,
         "shared_tags": shared_tags,
         "unique_to_policy_1": unique_tags_p1,
@@ -122,10 +152,13 @@ def compare_policies(id1: str, id2: str) -> dict:
 def _sector_focus(sector: str) -> str:
     """Returns a plain-language description of what each sector covers."""
     mapping = {
-        "AI Governance":       "algorithmic accountability, AI risk management, and ethical deployment of AI systems",
-        "Cybersecurity":       "threat detection, incident response, and protection of critical digital infrastructure",
-        "Data Privacy":        "individual data rights, consent management, and protection of personal information",
-        "Healthcare AI":       "safety of AI in clinical settings, medical device regulation, and patient data protection",
+        "AI Governance":        "algorithmic accountability, AI risk management, and ethical deployment of AI systems",
+        "Cybersecurity":        "threat detection, incident response, and protection of critical digital infrastructure",
+        "Data Privacy":         "individual data rights, consent management, and protection of personal information",
+        "Healthcare AI":        "safety of AI in clinical settings, medical device regulation, and patient data protection",
         "Financial Regulation": "model risk in financial AI, fair lending, and systemic risk from algorithmic trading",
+        "POSH Policies":        "workplace harassment prevention, employee protection, and gender-based discrimination",
+        "ESG Policies":         "environmental sustainability, social responsibility, and corporate governance reporting",
+        "IoT and Robotics":     "connected device security, robotics safety standards, and IoT data governance",
     }
     return mapping.get(sector, "regulatory compliance and governance standards")

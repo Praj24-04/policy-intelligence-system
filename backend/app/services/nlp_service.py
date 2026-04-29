@@ -1,6 +1,7 @@
 import spacy
 import json
 from app.database import get_connection
+from app.services.fine_extractor import extract_fines
 
 try:
     nlp = spacy.load("en_core_web_md")
@@ -146,6 +147,8 @@ def load_policies(sector=None, region=None, search=None, status=None):
 
         result.append(p)
 
+        p["penalty_fines"] = extract_fines(p.get("content", ""))
+
     conn.close()
     return result
 
@@ -178,6 +181,7 @@ def get_policy_by_id(policy_id: str):
     except Exception:
         p["extracted_countries"] = [p.get("country", "")]
 
+        p["penalty_fines"] = extract_fines(p.get("content", "")) 
     conn.close()
     return p
 

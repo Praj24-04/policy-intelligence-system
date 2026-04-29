@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ScrollText, GitCompare, BarChart3, Globe2, Zap, Sparkles, Upload } from "lucide-react";
+import { LayoutDashboard, ScrollText, GitCompare, BarChart3, Globe2, Zap, Sparkles, Upload, Sun, Moon } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
 
 const links = [
   { to: "/",          icon: LayoutDashboard, label: "Dashboard"   },
@@ -11,6 +12,8 @@ const links = [
 ];
 
 export default function Sidebar({ user, onLogout }) {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <aside style={{
       width: 220,
@@ -65,7 +68,7 @@ export default function Sidebar({ user, onLogout }) {
         ))}
       </nav>
 
-      {/* User + Logout Footer */}
+      {/* Footer */}
       <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)" }}>
         {/* NLP Badge */}
         <div style={{
@@ -80,9 +83,27 @@ export default function Sidebar({ user, onLogout }) {
             </span>
           </div>
           <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            spaCy NER · 30 policies indexed
+            spaCy NER · 88+ policies indexed
           </div>
         </div>
+
+        {/* Theme Toggle */}
+        <button onClick={toggleTheme} style={{
+          display: "flex", alignItems: "center", gap: 8,
+          width: "100%", padding: "8px 12px", borderRadius: 8,
+          background: "var(--bg-hover)", border: "1px solid var(--border)",
+          color: "var(--text-muted)", cursor: "pointer",
+          fontSize: 12, marginBottom: 8,
+          justifyContent: "space-between"
+        }}>
+          <span style={{ fontFamily: "JetBrains Mono" }}>
+            {theme === "dark" ? "DARK MODE" : "LIGHT MODE"}
+          </span>
+          {theme === "dark"
+            ? <Moon size={13} color="var(--cyan)" />
+            : <Sun size={13} color="#f59e0b" />
+          }
+        </button>
 
         {/* User Info */}
         <div style={{
