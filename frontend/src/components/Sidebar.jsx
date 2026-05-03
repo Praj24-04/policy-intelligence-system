@@ -1,14 +1,16 @@
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, ScrollText, GitCompare, BarChart3, Globe2, Zap, Sparkles, Upload, Sun, Moon } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import { FileText } from "lucide-react";
 
 const links = [
-  { to: "/",          icon: LayoutDashboard, label: "Dashboard"   },
-  { to: "/policies",  icon: ScrollText,      label: "Policies"    },
-  { to: "/compare",   icon: GitCompare,      label: "Compare"     },
-  { to: "/analytics", icon: BarChart3,       label: "Analytics"   },
-  { to: "/recommend", icon: Sparkles,        label: "Recommender" },
-  { to: "/upload",    icon: Upload,          label: "Upload PDF"  },
+  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/policies", icon: ScrollText, label: "Policies" },
+  { to: "/compare", icon: GitCompare, label: "Compare" },
+  { to: "/analytics", icon: BarChart3, label: "Analytics" },
+  { to: "/recommend", icon: Sparkles, label: "Recommender" },
+  { to: "/upload", icon: Upload, label: "Upload PDF" },
+  { to: "/generate", icon: FileText, label: "Generate Policy" },
 ];
 
 export default function Sidebar({ user, onLogout }) {
@@ -40,7 +42,7 @@ export default function Sidebar({ user, onLogout }) {
               PolicyIQ
             </div>
             <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>
-              v2.0 · 5 sectors
+              v2.0 · Global
             </div>
           </div>
         </div>
@@ -83,7 +85,7 @@ export default function Sidebar({ user, onLogout }) {
             </span>
           </div>
           <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            spaCy NER · 88+ policies indexed
+            spaCy NER Active
           </div>
         </div>
 

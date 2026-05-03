@@ -1,164 +1,173 @@
+import re
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 from app.services.nlp_service import get_policy_by_id
 from app.services.fine_extractor import extract_fines
+import app.services.recommender as recommender
+
+# --- Keywords for Rubric ---
+STRICT_KEYWORDS = {"must", "shall", "required", "mandatory", "penalty", "enforce", "prohibited", "liable", "fine", "obligation"}
+GUIDANCE_KEYWORDS = {"should", "may", "recommend", "voluntary", "encourage", "guidance", "best practice", "principles", "flexible"}
+RIGHTS_KEYWORDS = {"right to", "consent", "entitled", "opt-out", "transparency", "subject", "empower", "protect", "individual", "consumer"}
+TECH_KEYWORDS = {"algorithm", "encryption", "audit", "cyber", "network", "system", "infrastructure", "data", "model", "parameter", "software", "api"}
+
+def extract_sentences(text: str) -> list:
+    # Basic regex sentence splitter
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    # Filter out very short or empty strings
+    return [s for s in sentences if len(s.split()) > 4]
+
+def extract_clause_gaps(content1: str, content2: str, max_extracts: int = 3) -> dict:
+    sents1 = extract_sentences(content1)
+    sents2 = extract_sentences(content2)
+    
+    if not sents1 or not sents2:
+        return {"orphaned_in_1": [], "orphaned_in_2": []}
+        
+    try:
+        # Generate dense embeddings for all sentences
+        emb1 = recommender._model.encode(sents1, show_progress_bar=False)
+        emb2 = recommender._model.encode(sents2, show_progress_bar=False)
+        
+        # Matrix: N x M
+        sim_matrix = cosine_similarity(emb1, emb2)
+        
+        # Find maximum similarity for each sentence in document 1 against document 2
+        max_sim_1 = np.max(sim_matrix, axis=1)
+        # Find maximum similarity for each sentence in document 2 against document 1
+        max_sim_2 = np.max(sim_matrix, axis=0)
+        
+        # Sort by lowest maximum similarity (these are the orphans!)
+        orphaned_1_idx = np.argsort(max_sim_1)
+        orphaned_2_idx = np.argsort(max_sim_2)
+        
+        orphaned_in_1 = []
+        for idx in orphaned_1_idx:
+            if max_sim_1[idx] < 0.4:  # Threshold for being an orphan
+                orphaned_in_1.append({"text": sents1[idx], "max_sim": float(max_sim_1[idx])})
+                if len(orphaned_in_1) == max_extracts: break
+                
+        orphaned_in_2 = []
+        for idx in orphaned_2_idx:
+            if max_sim_2[idx] < 0.4:
+                orphaned_in_2.append({"text": sents2[idx], "max_sim": float(max_sim_2[idx])})
+                if len(orphaned_in_2) == max_extracts: break
+                
+        return {
+            "orphaned_in_1": orphaned_in_1,
+            "orphaned_in_2": orphaned_in_2
+        }
+    except Exception as e:
+        print("Clause gap extraction failed:", e)
+        return {"orphaned_in_1": [], "orphaned_in_2": []}
+
+def calculate_rubric(content: str, has_fines: bool) -> dict:
+    content_lower = content.lower()
+    total_words = len(content_lower.split())
+    if total_words == 0: total_words = 1
+    
+    strict_count = sum(len(re.findall(r'\b' + k + r'\b', content_lower)) for k in STRICT_KEYWORDS)
+    rights_count = sum(len(re.findall(r'\b' + k + r'\b', content_lower)) for k in RIGHTS_KEYWORDS)
+    tech_count   = sum(len(re.findall(r'\b' + k + r'\b', content_lower)) for k in TECH_KEYWORDS)
+    
+    # Calculate scores (0 to 100 normalized heuristically)
+    # 1. Prescriptiveness (Binding Density)
+    prescriptiveness = min(100, (strict_count / (total_words / 100)) * 25)
+    
+    # 2. Rights Orientation
+    rights_orientation = min(100, (rights_count / (total_words / 100)) * 30)
+    
+    # 3. Technical Specificity
+    technical_specificity = min(100, (tech_count / (total_words / 100)) * 15)
+    
+    # 4. Enforcement Power
+    enforcement_power = 95.0 if has_fines else min(100, prescriptiveness * 0.5)
+    
+    return {
+        "prescriptiveness": round(prescriptiveness),
+        "rights_orientation": round(rights_orientation),
+        "technical_specificity": round(technical_specificity),
+        "enforcement_power": round(enforcement_power)
+    }
+
+def extract_core_themes(content1: str, content2: str) -> dict:
+    if not content1 or not content2:
+        return {"shared": [], "unique_1": [], "unique_2": []}
+        
+    try:
+        vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1, 3), max_features=100)
+        tfidf_matrix = vectorizer.fit_transform([content1, content2])
+        feature_names = vectorizer.get_feature_names_out()
+        
+        arr = tfidf_matrix.toarray()
+        doc1_scores = arr[0]
+        doc2_scores = arr[1]
+        
+        shared, unique_1, unique_2 = [], [], []
+        for i, word in enumerate(feature_names):
+            s1, s2 = doc1_scores[i], doc2_scores[i]
+            if s1 > 0.05 and s2 > 0.05:
+                shared.append((word, s1 + s2))
+            elif s1 > 0.1 and s2 < 0.02:
+                unique_1.append((word, s1))
+            elif s2 > 0.1 and s1 < 0.02:
+                unique_2.append((word, s2))
+                
+        shared = [w for w, s in sorted(shared, key=lambda x: -x[1])][:5]
+        unique_1 = [w for w, s in sorted(unique_1, key=lambda x: -x[1])][:5]
+        unique_2 = [w for w, s in sorted(unique_2, key=lambda x: -x[1])][:5]
+        
+        return {"shared": shared, "unique_1": unique_1, "unique_2": unique_2}
+    except Exception as e:
+        print("TFIDF extraction failed:", e)
+        return {"shared": [], "unique_1": [], "unique_2": []}
+
 
 def compare_policies(id1: str, id2: str) -> dict:
+    recommender._ensure_trained()
+    
     p1 = get_policy_by_id(id1)
     p2 = get_policy_by_id(id2)
     if not p1 or not p2:
         return {"error": "One or both policies not found"}
 
-    shared_tags = list(set(p1["tags"]) & set(p2["tags"]))
-    unique_tags_p1 = list(set(p1["tags"]) - set(p2["tags"]))
-    unique_tags_p2 = list(set(p2["tags"]) - set(p1["tags"]))
-    same_sector = p1["sector"] == p2["sector"]
-    same_region = p1.get("region") == p2.get("region")
+    p1_cache = next((p for p in recommender._policy_data if p["id"] == id1), None)
+    p2_cache = next((p for p in recommender._policy_data if p["id"] == id2), None)
+    
+    semantic_similarity = 0.0
+    if p1_cache and p2_cache and p1_cache.get("embedding_idx") is not None and p2_cache.get("embedding_idx") is not None:
+        emb1 = recommender._embeddings[p1_cache["embedding_idx"]].reshape(1, -1)
+        emb2 = recommender._embeddings[p2_cache["embedding_idx"]].reshape(1, -1)
+        semantic_similarity = max(0.0, float(cosine_similarity(emb1, emb2)[0][0]))
+        
+    themes = extract_core_themes(p1.get("content", ""), p2.get("content", ""))
+    
+    p1_fines = extract_fines(p1.get("content", "")) or {}
+    p2_fines = extract_fines(p2.get("content", "")) or {}
 
-    insights = []
-
-    # ── Approach & Philosophy ─────────────────────────────────
-    if same_sector:
-        if p1.get("country") != p2.get("country"):
-            insights.append(
-                f"Both address {p1['sector']} but from different national contexts. "
-                f"{p1['country']} takes a {'binding' if 'compliance' in p1.get('tags', []) else 'guidance-based'} approach "
-                f"while {p2['country']} emphasizes {'enforcement' if 'enforcement' in p2.get('tags', []) else 'voluntary adoption'}."
-            )
-    else:
-        insights.append(
-            f"These policies address different problem spaces — "
-            f"'{p1['sector']}' focuses on {_sector_focus(p1['sector'])} "
-            f"while '{p2['sector']}' addresses {_sector_focus(p2['sector'])}. "
-            f"Together they cover complementary aspects of digital governance."
-        )
-
-    # ── Unique Strengths ──────────────────────────────────────
-    if unique_tags_p1:
-        insights.append(
-            f"'{p1['title'][:45]}...' uniquely addresses: "
-            f"{', '.join(unique_tags_p1[:3])} — areas not covered by the other policy."
-        )
-    if unique_tags_p2:
-        insights.append(
-            f"'{p2['title'][:45]}...' distinctively focuses on: "
-            f"{', '.join(unique_tags_p2[:3])} — giving it a different regulatory scope."
-        )
-
-    # ── Shared Ground ─────────────────────────────────────────
-    if shared_tags:
-        insights.append(
-            f"Both policies converge on: {', '.join(shared_tags[:4])}. "
-            f"This overlap suggests these are foundational concerns across different governance contexts."
-        )
-    else:
-        insights.append(
-            f"No overlapping focus areas — these policies are genuinely complementary "
-            f"and could be adopted together without redundancy."
-        )
-
-    # ── Regulatory Maturity & Timeline ───────────────────────
-    if p1.get("year") and p2.get("year"):
-        diff = abs(p1["year"] - p2["year"])
-        older = p1 if p1["year"] < p2["year"] else p2
-        newer = p1 if p1["year"] > p2["year"] else p2
-        if diff > 0:
-            insights.append(
-                f"'{newer['title'][:40]}...' ({newer['year']}) builds on {diff} year(s) of "
-                f"regulatory evolution since '{older['title'][:40]}...' ({older['year']}). "
-                f"The newer policy likely addresses gaps identified in earlier frameworks."
-            )
-
-    # ── Geographic & Jurisdictional ───────────────────────────
-    if not same_region:
-        insights.append(
-            f"This is a cross-regional comparison: {p1.get('region')} ({p1['country']}) "
-            f"vs {p2.get('region')} ({p2['country']}). "
-            f"Regulatory approaches often reflect regional economic priorities and "
-            f"governance traditions — direct transplantation may require adaptation."
-        )
-    else:
-        insights.append(
-            f"Both originate from {p1.get('region')} — suggesting regional regulatory "
-            f"alignment or mutual influence in policy design."
-        )
-
-    # ── Enforcement Strength ──────────────────────────────────
-    p1_enforcement = any(t in p1.get("tags", []) for t in ["compliance", "enforcement", "mandatory", "binding"])
-    p2_enforcement = any(t in p2.get("tags", []) for t in ["compliance", "enforcement", "mandatory", "binding"])
-
-    if p1_enforcement and not p2_enforcement:
-        insights.append(
-            f"'{p1['title'][:40]}...' has stronger enforcement mechanisms with binding obligations, "
-            f"while '{p2['title'][:40]}...' leans toward voluntary adoption or principles-based guidance."
-        )
-    elif p2_enforcement and not p1_enforcement:
-        insights.append(
-            f"'{p2['title'][:40]}...' carries binding enforcement weight "
-            f"compared to the more advisory nature of '{p1['title'][:40]}...'."
-        )
-    elif p1_enforcement and p2_enforcement:
-        insights.append(
-            f"Both policies carry significant enforcement obligations — "
-            f"organizations operating across both jurisdictions face compounding compliance requirements."
-        )
-
-    # ── Penalty Fine Comparison ───────────────────────────────
-    p1_fines = extract_fines(p1.get("content", ""))
-    p2_fines = extract_fines(p2.get("content", ""))
-
-    if p1_fines and p2_fines and p1_fines.get("has_fines") and p2_fines.get("has_fines"):
-        insights.append(
-            f"Both policies enforce financial penalties. "
-            f"{p1['country']}: {p1_fines.get('summary', 'penalties apply')}. "
-            f"{p2['country']}: {p2_fines.get('summary', 'penalties apply')}."
-        )
-    elif p1_fines and p1_fines.get("has_fines") and not (p2_fines and p2_fines.get("has_fines")):
-        insights.append(
-            f"'{p1['title'][:40]}...' enforces explicit financial penalties ({p1_fines.get('summary', '')}), "
-            f"while '{p2['title'][:40]}...' does not specify monetary sanctions."
-        )
-    elif p2_fines and p2_fines.get("has_fines") and not (p1_fines and p1_fines.get("has_fines")):
-        insights.append(
-            f"'{p2['title'][:40]}...' enforces explicit financial penalties ({p2_fines.get('summary', '')}), "
-            f"while '{p1['title'][:40]}...' does not specify monetary sanctions."
-        )
-
-    # ── Adoption Recommendation ───────────────────────────────
-    if shared_tags and not same_sector:
-        newer = p1 if (p1.get("year") or 0) > (p2.get("year") or 0) else p2
-        older = p2 if newer == p1 else p1
-        insights.append(
-            f"Policy makers in emerging economies could prioritize "
-            f"'{newer['title'][:40]}...' as a more current framework, "
-            f"using '{older['title'][:40]}...' as foundational context."
-        )
+    # Calculate Analyst Rubric
+    rubric1 = calculate_rubric(p1.get("content", ""), bool(p1_fines.get("has_fines")))
+    rubric2 = calculate_rubric(p2.get("content", ""), bool(p2_fines.get("has_fines")))
+    
+    # Calculate Clause-Level Gaps
+    clause_gaps = extract_clause_gaps(p1.get("content", ""), p2.get("content", ""))
 
     return {
         "policy_1": {
             **{k: p1[k] for k in ["id", "title", "country", "sector", "region", "year", "tags", "status", "source_url"]},
-            "penalty_fines": p1_fines
+            "penalty_fines": p1_fines,
+            "rubric": rubric1
         },
         "policy_2": {
             **{k: p2[k] for k in ["id", "title", "country", "sector", "region", "year", "tags", "status", "source_url"]},
-            "penalty_fines": p2_fines
+            "penalty_fines": p2_fines,
+            "rubric": rubric2
         },
-        "same_sector": same_sector,
-        "shared_tags": shared_tags,
-        "unique_to_policy_1": unique_tags_p1,
-        "unique_to_policy_2": unique_tags_p2,
-        "insights": insights,
+        "ml_metrics": {
+            "semantic_similarity_score": semantic_similarity,
+            "themes": themes,
+            "clause_gaps": clause_gaps
+        },
+        "same_sector": p1["sector"] == p2["sector"]
     }
-
-
-def _sector_focus(sector: str) -> str:
-    """Returns a plain-language description of what each sector covers."""
-    mapping = {
-        "AI Governance":        "algorithmic accountability, AI risk management, and ethical deployment of AI systems",
-        "Cybersecurity":        "threat detection, incident response, and protection of critical digital infrastructure",
-        "Data Privacy":         "individual data rights, consent management, and protection of personal information",
-        "Healthcare AI":        "safety of AI in clinical settings, medical device regulation, and patient data protection",
-        "Financial Regulation": "model risk in financial AI, fair lending, and systemic risk from algorithmic trading",
-        "POSH Policies":        "workplace harassment prevention, employee protection, and gender-based discrimination",
-        "ESG Policies":         "environmental sustainability, social responsibility, and corporate governance reporting",
-        "IoT and Robotics":     "connected device security, robotics safety standards, and IoT data governance",
-    }
-    return mapping.get(sector, "regulatory compliance and governance standards")

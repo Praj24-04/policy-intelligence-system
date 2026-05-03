@@ -83,7 +83,7 @@ export default function Recommend() {
               FILTER BY SECTOR
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {["", "AI Governance", "Cybersecurity", "Data Privacy", "Healthcare AI", "Financial Regulation"].map(s => (
+              {["", "AI Governance", "Cybersecurity", "Data Privacy", "Healthcare AI", "Financial Regulation", "ESG Policies", "POSH Policies", "IoT and Robotics"].map(s => (
                 <button key={s} onClick={() => setSector(s)} style={{
                   padding: "7px 12px", borderRadius: 8,
                   textAlign: "left", fontSize: 12, cursor: "pointer",

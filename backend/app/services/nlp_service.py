@@ -5,10 +5,10 @@ from app.services.fine_extractor import extract_fines
 
 try:
     nlp = spacy.load("en_core_web_md")
-    print("✅ spaCy: en_core_web_md loaded")
+    print("spaCy: en_core_web_md loaded")
 except OSError:
     nlp = spacy.load("en_core_web_sm")
-    print("⚠️ spaCy: falling back to en_core_web_sm")
+    print("spaCy: falling back to en_core_web_sm")
 
 CORRECTIONS = {
     "EU": "European Union", "U.S.": "United States",
@@ -134,6 +134,7 @@ def load_policies(sector=None, region=None, search=None, status=None):
     for row in rows:
         p = dict(row)
         p["tags"] = json.loads(p["tags"] or "[]")
+        p["tags"] = rank_tags_by_frequency(p)
 
         # Use cache — never run spaCy on list view
         cached = _get_cached_countries(p["id"], conn)
@@ -165,25 +166,51 @@ def get_policy_by_id(policy_id: str):
 
     p = dict(row)
     p["tags"] = json.loads(p["tags"] or "[]")
+    p["tags"] = rank_tags_by_frequency(p)
 
-    # Check cache first — return immediately if cached
+    # Check cache first
     cached = _get_cached_countries(p["id"], conn)
     if cached is not None:
         p["extracted_countries"] = cached
-        conn.close()
-        return p
+    else:
+        try:
+            countries = extract_countries_smart(p)
+            p["extracted_countries"] = countries
+            _save_cache(p["id"], countries, conn)
+        except Exception:
+            p["extracted_countries"] = [p.get("country", "")]
 
-    # Only run spaCy if no cache exists
-    try:
-        countries = extract_countries_smart(p)
-        p["extracted_countries"] = countries
-        _save_cache(p["id"], countries, conn)
-    except Exception:
-        p["extracted_countries"] = [p.get("country", "")]
-
-        p["penalty_fines"] = extract_fines(p.get("content", "")) 
+    p["penalty_fines"] = extract_fines(p.get("content", "")) 
     conn.close()
     return p
+
+def rank_tags_by_frequency(policy: dict) -> list:
+    """
+    Ranks tags by how frequently the tag concept appears in policy content.
+    Most discussed tag appears first.
+    """
+    content = policy.get("content", "").lower()
+    tags = policy.get("tags", [])
+
+    if not tags or not content:
+        return tags
+
+    # Count occurrences of each tag concept in content
+    tag_scores = []
+    for tag in tags:
+        # Count direct mentions
+        direct_count = content.count(tag.lower())
+
+        # Count related word mentions
+        words = tag.lower().split()
+        word_count = sum(content.count(w) for w in words if len(w) > 3)
+
+        total_score = direct_count * 2 + word_count
+        tag_scores.append((tag, total_score))
+
+    # Sort by score descending
+    tag_scores.sort(key=lambda x: -x[1])
+    return [tag for tag, score in tag_scores]
 
 
 def prewarm_ner_cache():

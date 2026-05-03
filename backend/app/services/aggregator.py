@@ -8,7 +8,7 @@ def get_country_distribution():
     for p in policies:
         for c in p["extracted_countries"]:
             counts[c] += 1
-    return dict(counts.most_common(20))
+    return dict(counts)
 
 def get_sector_distribution():
     conn = get_connection()

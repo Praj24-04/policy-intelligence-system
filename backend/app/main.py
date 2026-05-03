@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import policies, analytics, compare, recommend, upload, auth, fetch
 from app.database import init_db
-from app.routes import policies, analytics, compare, recommend, upload, auth, fetch, feedback
+from app.routes import policies, analytics, compare, recommend, upload, auth, fetch, feedback, generate
 app = FastAPI(
     title="Global Policy Intelligence API",
     description="AI-powered policy analysis — Live data from OECD, CISA, EUR-Lex, ENISA",
@@ -48,6 +47,7 @@ app.include_router(recommend.router, prefix="/api/recommend", tags=["Recommendat
 app.include_router(upload.router,    prefix="/api/upload",    tags=["Upload"])
 app.include_router(fetch.router,     prefix="/api/fetch",     tags=["Live Fetch"])
 app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
+app.include_router(generate.router, prefix="/api/generate", tags=["Generate"])
 
 @app.get("/")
 def root():

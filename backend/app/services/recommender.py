@@ -10,8 +10,10 @@ _backend_root = Path(__file__).parent.parent.parent
 if str(_backend_root) not in sys.path:
     sys.path.insert(0, str(_backend_root))
 
-from data.country_profiles import COUNTRY_PROFILES
 from app.database import get_connection
+
+COUNTRY_PROFILES = {}
+COUNTRY_NEED_DESCRIPTIONS = {}
 
 # ── Globals ──────────────────────────────────────────────────
 _model        = None   # SentenceTransformer
@@ -21,146 +23,40 @@ _kmeans       = None
 _country_embeddings = {}  # precomputed per-country need embeddings
 N_CLUSTERS    = 6
 
-# ── Country need descriptions for semantic matching ──────────
-# These are rich text descriptions of what each country needs
-# The model will semantically match policy content against these
-COUNTRY_NEED_DESCRIPTIONS = {
-    "Indonesia": (
-        "Indonesia urgently needs cybersecurity incident response laws and mandatory "
-        "breach reporting for critical infrastructure. The country lacks personal data "
-        "protection legislation, cybersecurity standards for financial services, and "
-        "AI governance frameworks for public sector automation."
-    ),
-    "Nigeria": (
-        "Nigeria needs financial cybersecurity standards for fintech and mobile banking. "
-        "Data protection enforcement for consumer financial data is critical. "
-        "AI governance for automated lending decisions and fraud detection systems "
-        "needs regulatory oversight."
-    ),
-    "Kenya": (
-        "Kenya needs data privacy legislation for mobile money services and digital ID. "
-        "Cybersecurity standards for mobile financial services and AI accountability "
-        "for credit scoring algorithms used by millions of unbanked citizens."
-    ),
-    "Saudi Arabia": (
-        "Saudi Arabia needs AI governance frameworks aligned with Vision 2030 smart city "
-        "initiatives. Algorithmic accountability for government automated services, "
-        "AI ethics standards for healthcare diagnostics, and cybersecurity for "
-        "oil infrastructure and financial sector digital transformation."
-    ),
-    "United Arab Emirates": (
-        "UAE needs data privacy legislation protecting residents from commercial "
-        "data exploitation. AI ethics accountability for surveillance systems, "
-        "automated government services transparency, and cybersecurity compliance "
-        "standards for financial free zones and digital economy."
-    ),
-    "South Korea": (
-        "South Korea needs comprehensive data privacy rights equivalent to GDPR. "
-        "AI liability frameworks for autonomous vehicles and semiconductor AI systems. "
-        "Cybersecurity mandatory audit requirements for critical infrastructure "
-        "and supply chain security standards for technology exports."
-    ),
-    "Argentina": (
-        "Argentina needs AI governance frameworks for public sector automated decisions. "
-        "Modernized privacy law with stronger enforcement powers and data portability rights. "
-        "Cybersecurity incident reporting obligations for financial institutions "
-        "and critical infrastructure operators."
-    ),
-    "Brazil": (
-        "Brazil needs mandatory cybersecurity incident reporting standards and "
-        "critical infrastructure protection frameworks. AI governance for "
-        "automated government benefit decisions affecting millions. "
-        "LGPD enforcement strengthening for data broker regulation."
-    ),
-    "Mexico": (
-        "Mexico needs cybersecurity standards for manufacturing supply chains and "
-        "financial sector data protection enforcement. AI accountability for "
-        "law enforcement predictive systems and privacy law modernization "
-        "with stronger individual rights and enforcement capacity."
-    ),
-    "India": (
-        "India needs mandatory cybersecurity incident reporting within defined timelines "
-        "for critical sectors. AI accountability standards for facial recognition "
-        "in public spaces and automated government welfare systems. "
-        "Cross-border data transfer security frameworks complementing DPDP Act."
-    ),
-    "Japan": (
-        "Japan needs binding AI safety requirements for high-risk systems replacing "
-        "voluntary guidelines. Mandatory cybersecurity standards for critical "
-        "infrastructure replacing sector-by-sector approaches. "
-        "Algorithmic transparency requirements for automated hiring and credit decisions."
-    ),
-    "Australia": (
-        "Australia needs privacy law reform giving individuals right to erasure and "
-        "automated decision explanation. AI liability framework for high-risk government "
-        "AI systems. Enhanced critical infrastructure cybersecurity obligations "
-        "with mandatory security assessments for operators."
-    ),
-    "Canada": (
-        "Canada needs mandatory cybersecurity incident reporting for private sector "
-        "critical infrastructure. AI liability rules for high-impact automated decisions "
-        "in employment and credit. PIPEDA replacement with stronger enforcement "
-        "powers and meaningful consent requirements."
-    ),
-    "South Africa": (
-        "South Africa needs cybersecurity incident response mandatory standards "
-        "complementing POPIA data protection. AI governance frameworks for "
-        "financial inclusion algorithms and public sector automation. "
-        "Digital economy security standards for growing fintech sector."
-    ),
-    "United Kingdom": (
-        "UK needs AI liability legislation for high-risk AI systems post-Brexit. "
-        "Data adequacy maintenance with EU requiring privacy law alignment. "
-        "Binding cybersecurity standards for critical national infrastructure "
-        "and AI accountability for public sector automated decisions."
-    ),
-    "Germany": (
-        "Germany needs AI quality standards for industrial manufacturing applications "
-        "and explainability requirements for safety-critical AI systems. "
-        "Supply chain cybersecurity audit requirements for automotive and machinery. "
-        "Sovereign cloud security standards protecting industrial data."
-    ),
-    "France": (
-        "France needs binding AI accountability rules for public sector algorithmic "
-        "decisions and government AI transparency requirements. Cybersecurity "
-        "standards for critical services and digital sovereignty protection "
-        "frameworks preventing foreign data access."
-    ),
-    "Singapore": (
-        "Singapore needs quantum-resilient cybersecurity standards for financial sector. "
-        "AI accountability enforcement mechanisms beyond voluntary frameworks. "
-        "Regional cross-border data governance leadership standards and "
-        "binding AI liability rules for high-stakes automated decisions."
-    ),
-    "China": (
-        "China needs international AI safety alignment frameworks enabling "
-        "cross-border AI service interoperability. Data transfer standards "
-        "compatible with global privacy frameworks. International cybersecurity "
-        "cooperation standards reducing fragmentation."
-    ),
-    "United States": (
-        "United States needs federal privacy legislation replacing fragmented state laws. "
-        "AI liability standards for foundation model developers and deployers. "
-        "Mandatory critical infrastructure cybersecurity baseline requirements "
-        "and unified federal AI risk assessment framework."
-    ),
-    "European Union": (
-        "European Union needs AI Act enforcement capacity building and "
-        "quantum security standards for critical infrastructure. "
-        "Cross-border cybersecurity incident coordination improvements and "
-        "international data transfer adequacy framework modernization."
-    ),
-    "International": (
-        "International bodies need global AI governance harmonization reducing "
-        "regulatory fragmentation. Cross-border cybersecurity cooperation standards "
-        "and harmonized data protection adequacy frameworks enabling digital trade."
-    ),
-}
+def load_profiles_from_db():
+    conn = get_connection()
+    profiles = {}
+    try:
+        rows = conn.execute("SELECT * FROM country_profiles").fetchall()
+        for r in rows:
+            profiles[r['country']] = {
+                "region": r['region'],
+                "gdp_tier": r['gdp_tier'],
+                "regulatory_maturity": r['regulatory_maturity'],
+                "context": r['context'],
+                "priority_needs": json.loads(r['priority_needs']),
+                "existing_sectors": json.loads(r['existing_sectors'])
+            }
+    except Exception as e:
+        print(f"Error loading country profiles: {e}")
+        
+    needs = {}
+    try:
+        rows = conn.execute("SELECT * FROM country_needs").fetchall()
+        for r in rows:
+            needs[r['country']] = r['description']
+    except Exception as e:
+        print(f"Error loading country needs: {e}")
+        
+    conn.close()
+    return profiles, needs
 
 def _load_and_train():
-    global _model, _embeddings, _policy_data, _kmeans, _country_embeddings
+    global _model, _embeddings, _policy_data, _kmeans, _country_embeddings, COUNTRY_PROFILES, COUNTRY_NEED_DESCRIPTIONS
 
-    print("🔄 Loading Sentence Transformer model...")
+    COUNTRY_PROFILES, COUNTRY_NEED_DESCRIPTIONS = load_profiles_from_db()
+
+    print("Loading Sentence Transformer model...")
     _model = SentenceTransformer('all-MiniLM-L6-v2')  # fast, good quality, 384 dims
 
     conn = get_connection()
@@ -188,7 +84,7 @@ def _load_and_train():
         policy_texts.append(rich_text)
 
     # Generate semantic embeddings for all policies
-    print("🔄 Generating policy embeddings...")
+    print("Generating policy embeddings...")
     _embeddings = _model.encode(policy_texts, show_progress_bar=False)
     # _embeddings shape: (30, 384)
 
@@ -203,11 +99,11 @@ def _load_and_train():
     _policy_data = policies
 
     # Precompute country need embeddings for semantic matching
-    print("🔄 Computing country need embeddings...")
+    print("Computing country need embeddings...")
     for country, need_desc in COUNTRY_NEED_DESCRIPTIONS.items():
         _country_embeddings[country] = _model.encode([need_desc])[0]
 
-    print(f"✅ Recommender trained: {len(policies)} policies, {N_CLUSTERS} clusters, {len(_country_embeddings)} country profiles")
+    print(f"Recommender trained: {len(policies)} policies, {N_CLUSTERS} clusters, {len(_country_embeddings)} country profiles")
 
 
 def _ensure_trained():
