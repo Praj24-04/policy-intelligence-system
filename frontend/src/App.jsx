@@ -10,6 +10,7 @@ import Recommend from "./pages/Recommend";
 import UploadPolicy from "./pages/UploadPolicy";
 import Login from "./pages/Login";
 import GeneratePolicy from "./pages/GeneratePolicy";
+import Home from "./pages/Home";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -32,7 +33,17 @@ export default function App() {
     setUser(null);
   };
 
-  if (!user) return <Login onLogin={handleLogin} />;
+  if (!user) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
 
   return (
     <BrowserRouter>

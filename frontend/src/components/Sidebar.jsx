@@ -32,10 +32,10 @@ export default function Sidebar({ user, onLogout }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 8,
-            background: "linear-gradient(135deg, var(--cyan-dim), #0e7490)",
+            background: "var(--cyan)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <Globe2 size={16} color="#fff" />
+            <Globe2 size={16} color="#000" />
           </div>
           <div>
             <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 13, color: "var(--text-main)", lineHeight: 1.2 }}>
@@ -58,9 +58,9 @@ export default function Sidebar({ user, onLogout }) {
             display: "flex", alignItems: "center", gap: 10,
             padding: "9px 12px", borderRadius: 8, marginBottom: 2,
             textDecoration: "none",
-            background: isActive ? "rgba(34,211,238,0.08)" : "transparent",
-            color: isActive ? "var(--cyan)" : "var(--text-muted)",
-            borderLeft: isActive ? "2px solid var(--cyan)" : "2px solid transparent",
+            background: isActive ? "var(--cyan)" : "transparent",
+            color: isActive ? "#000" : "var(--text-muted)",
+            borderLeft: isActive ? "2px solid #000" : "2px solid transparent",
             fontSize: 13, fontWeight: 500,
             transition: "all 0.15s",
           })}>

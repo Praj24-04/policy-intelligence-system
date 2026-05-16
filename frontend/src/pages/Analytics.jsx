@@ -20,11 +20,11 @@ export default function Analytics() {
   useEffect(() => {
     Promise.all([fetchSectorDist(), fetchRegionDist(), fetchTrends(), fetchCountries(), fetchStatus()])
       .then(([sec, reg, tr, ctr, st]) => {
-        setSectors(Object.entries(sec).map(([name, value]) => ({ name, value })));
-        setRegions(Object.entries(reg).map(([name, value]) => ({ name, value })));
-        setTrends(Object.entries(tr).map(([year, count]) => ({ year: String(year), count })));
-        setCountries(Object.entries(ctr).sort((a,b) => b[1]-a[1]).slice(0,10).map(([name, value]) => ({ name, value })));
-        setStatus(Object.entries(st).map(([name, value]) => ({ name, value })));
+        setSectors(Object.entries(sec || {}).map(([name, value]) => ({ name, value })));
+        setRegions(Object.entries(reg || {}).map(([name, value]) => ({ name, value })));
+        setTrends(Object.entries(tr || {}).map(([year, count]) => ({ year: String(year), count })));
+        setCountries(Object.entries(ctr || {}).sort((a,b) => b[1]-a[1]).slice(0,10).map(([name, value]) => ({ name, value })));
+        setStatus(Object.entries(st || {}).map(([name, value]) => ({ name, value })));
         setLoading(false);
       });
 

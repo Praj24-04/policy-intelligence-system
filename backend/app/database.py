@@ -70,4 +70,4 @@ def init_db():
 
     conn.commit()
     conn.close()
-    print("✅ PostgreSQL Database initialized")
+    print("[OK] PostgreSQL Database initialized")

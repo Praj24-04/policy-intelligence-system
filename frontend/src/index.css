@@ -11,32 +11,32 @@
   --bg-hover:   #161d2e;
   --border:     #1e2a3a;
   --border-lit: #2a3a52;
-  --cyan:       #22d3ee;
-  --cyan-dim:   #0891b2;
+  --cyan:       #bfff00; /* Replaced cyan with the neon green from screenshot */
+  --cyan-dim:   #9acc00;
   --amber:      #f59e0b;
-  --green:      #10b981;
+  --green:      #bfff00; 
   --red:        #f43f5e;
   --text-main:  #e2e8f0;
-  --text-muted: #64748b;
-  --text-dim:   #334155;
+  --text-muted: #94a3b8;
+  --text-dim:   #475569;
 }
 
 /* ── Light Mode ── */
 [data-theme="light"] {
-  --bg-deep:    #f0f4f8;
+  --bg-deep:    #fafafa; /* Lighter background like the screenshot */
   --bg-base:    #ffffff;
   --bg-card:    #ffffff;
-  --bg-hover:   #f1f5f9;
-  --border:     #e2e8f0;
-  --border-lit: #cbd5e1;
-  --cyan:       #0891b2;
-  --cyan-dim:   #0e7490;
+  --bg-hover:   #f4f5f7;
+  --border:     #e5e7eb;
+  --border-lit: #d1d5db;
+  --cyan:       #bfff00; /* Neon green primary */
+  --cyan-dim:   #9acc00;
   --amber:      #d97706;
-  --green:      #059669;
+  --green:      #bfff00;
   --red:        #e11d48;
-  --text-main:  #0f172a;
-  --text-muted: #475569;
-  --text-dim:   #94a3b8;
+  --text-main:  #111827; /* Darker text for contrast */
+  --text-muted: #6b7280;
+  --text-dim:   #9ca3af;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -71,14 +71,14 @@ h1, h2, h3, h4 { font-family: 'Syne', sans-serif; }
 }
 .card:hover { border-color: var(--border-lit); }
 
-.pill-ai    { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
-.pill-cyber { background: rgba(34,211,238,0.1);  color: #67e8f9; border: 1px solid rgba(34,211,238,0.25); }
-.pill-priv  { background: rgba(16,185,129,0.1);  color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }
-.pill-health { background: rgba(245,158,11,0.1); color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
-.pill-fin   { background: rgba(244,63,94,0.1);   color: #fda4af; border: 1px solid rgba(244,63,94,0.25); }
-.pill-posh  { background: rgba(167,139,250,0.1); color: #c4b5fd; border: 1px solid rgba(167,139,250,0.25); }
-.pill-esg   { background: rgba(52,211,153,0.1);  color: #6ee7b7; border: 1px solid rgba(52,211,153,0.25); }
-.pill-iot   { background: rgba(56,189,248,0.1);  color: #7dd3fc; border: 1px solid rgba(56,189,248,0.25); }
+.pill-ai     { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); border-left: 2px solid #a3e635; }
+.pill-cyber  { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); border-left: 2px solid #84cc16; }
+.pill-priv   { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); border-left: 2px solid #65a30d; }
+.pill-health { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); border-left: 2px solid #4d7c0f; }
+.pill-fin    { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); border-left: 2px solid #3f6212; }
+.pill-posh   { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); border-left: 2px solid #bef264; }
+.pill-esg    { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); border-left: 2px solid #d9f99d; }
+.pill-iot    { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); border-left: 2px solid #166534; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
@@ -90,3 +90,8 @@ h1, h2, h3, h4 { font-family: 'Syne', sans-serif; }
 .fade-up-3 { animation-delay: 0.15s; }
 .fade-up-4 { animation-delay: 0.20s; }
 .fade-up-5 { animation-delay: 0.25s; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}

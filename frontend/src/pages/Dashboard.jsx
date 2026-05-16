@@ -10,16 +10,16 @@ import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
 
 const SECTOR_COLORS  = { 
-  "AI Governance": "#818cf8", 
-  "Cybersecurity": "#22d3ee", 
-  "Data Privacy": "#34d399",
-  "Financial Regulation": "#f59e0b",
-  "Healthcare AI": "#f43f5e",
-  "ESG Policies": "#a78bfa",
-  "POSH Policies": "#fb923c",
-  "IoT and Robotics": "#60a5fa"
+  "AI Governance": "#a3e635", 
+  "Cybersecurity": "#84cc16", 
+  "Data Privacy": "#65a30d",
+  "Financial Regulation": "#4d7c0f",
+  "Healthcare AI": "#3f6212",
+  "ESG Policies": "#bef264",
+  "POSH Policies": "#d9f99d",
+  "IoT and Robotics": "#166534"
 };
-const REGION_COLORS  = ["#22d3ee","#818cf8","#34d399","#f59e0b","#f43f5e","#a78bfa","#fb923c"];
+const REGION_COLORS  = ["#a3e635","#84cc16","#65a30d","#4d7c0f","#3f6212","#bef264","#d9f99d"];
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -60,11 +60,11 @@ export default function Dashboard() {
       fetchOverview(), fetchSectorDist(), fetchRegionDist(), fetchTrends(), fetchCountries()
     ]).then(([ov, sec, reg, tr, ctr]) => {
       setOverview(ov);
-      setSectors(Object.entries(sec).map(([name, value]) => ({ name, value })));
-      setRegions(Object.entries(reg).map(([name, value]) => ({ name, value })));
-      setTrends(Object.entries(tr).map(([year, count]) => ({ year: String(year), count })));
-      setAllCountries(ctr);
-      setCountries(Object.entries(ctr).sort((a,b) => b[1]-a[1]).slice(0,8)
+      setSectors(Object.entries(sec || {}).map(([name, value]) => ({ name, value })));
+      setRegions(Object.entries(reg || {}).map(([name, value]) => ({ name, value })));
+      setTrends(Object.entries(tr || {}).map(([year, count]) => ({ year: String(year), count })));
+      setAllCountries(ctr || {});
+      setCountries(Object.entries(ctr || {}).sort((a,b) => b[1]-a[1]).slice(0,8)
         .map(([name, value]) => ({ name: name.replace("European Union","EU").replace("United States","USA").replace("United Kingdom","UK"), value })));
       setLoading(false);
     });
@@ -109,43 +109,108 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
-        <StatCard label="Total Policies"    value={overview?.total_policies}  sub="Across all sectors"    accent="cyan"   delay={1} />
-        <StatCard label="Countries Covered" value={overview?.total_countries} sub="Unique jurisdictions"  accent="indigo" delay={2} />
-        <StatCard label="Sectors Tracked"   value={overview?.total_sectors}   sub="AI · Cyber · Privacy"  accent="green"  delay={3} />
-        <StatCard label="Regions Mapped"    value={overview?.total_regions}   sub="Global coverage"       accent="amber"  delay={4} />
+        <StatCard label="Total Policies"    value={overview?.total_policies}  sub="Across all sectors"    accent="green" delay={1} />
+        <StatCard label="Countries Covered" value={overview?.total_countries} sub="Unique jurisdictions"  accent="green" delay={2} />
+        <StatCard label="Sectors Tracked"   value={overview?.total_sectors}   sub="AI · Cyber · Privacy"  accent="green" delay={3} />
+        <StatCard label="Regions Mapped"    value={overview?.total_regions}   sub="Global coverage"       accent="green" delay={4} />
       </div>
 
-      {/* Live Data Pipeline Banner */}
+      {/* Hybrid Intelligence Pipeline Banner */}
       <div className="card fade-up" style={{
-        padding: "16px 20px", marginBottom: 16,
+        padding: "18px 22px", marginBottom: 16,
         borderColor: "rgba(34,211,238,0.2)",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        flexWrap: "wrap", gap: 12,
       }}>
-        <div>
-          <div style={{
-            fontSize: 11, color: "var(--cyan)",
-            fontFamily: "JetBrains Mono", marginBottom: 4
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+          <div>
+            <div style={{
+              fontSize: 11, color: "var(--cyan)",
+              fontFamily: "JetBrains Mono", marginBottom: 4,
+              letterSpacing: "0.5px"
+            }}>
+              HYBRID INTELLIGENCE PIPELINE
+            </div>
+            <div style={{ fontSize: 13, color: "var(--text-main)", marginBottom: 2 }}>
+              15 Curated Foundational Laws + {fetchStatus?.live_fetched || 0} Live API Policies · Auto-refreshes every 24h
+            </div>
+          </div>
+          <button onClick={triggerFetch} disabled={fetching} style={{
+            padding: "8px 18px", borderRadius: 8,
+            background: fetching ? "var(--bg-hover)" : "rgba(34,211,238,0.1)",
+            border: `1px solid ${fetching ? "var(--border)" : "rgba(34,211,238,0.3)"}`,
+            color: fetching ? "var(--text-muted)" : "var(--cyan)",
+            fontSize: 12, cursor: fetching ? "not-allowed" : "pointer",
+            fontFamily: "JetBrains Mono", transition: "all 0.2s",
+            flexShrink: 0,
           }}>
-            LIVE DATA PIPELINE
+            {fetching ? "⟳ Fetching..." : "⟳ Fetch Live APIs"}
+          </button>
+        </div>
+
+        {/* Per-source breakdown pills — all live */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {/* Foundational Standards */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "5px 14px", borderRadius: 6,
+            background: "var(--bg-hover)", border: "1px solid var(--border)",
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6b7280" }} />
+            <span style={{ fontSize: 10, color: "#4b5563", fontFamily: "JetBrains Mono" }}>CURATED</span>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Foundational Core Standards</span>
+            <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+              15
+            </span>
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-main)", marginBottom: 2 }}>
-            {fetchStatus?.live_fetched || 0} live policies · {fetchStatus?.curated || 0} curated · Auto-updates every 24h
+
+          {/* EUR-Lex */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "5px 14px", borderRadius: 6,
+            background: "rgba(183, 255, 0, 0.06)", border: "1px solid rgba(183, 255, 0, 0.15)",
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cyan)", animation: "pulse 2s infinite" }} />
+            <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono" }}>LIVE</span>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>EUR-Lex SPARQL</span>
+            <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+              {fetchStatus?.sources?.eurlex?.count || 0}
+            </span>
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>
-            Sources: OECD · CISA · EUR-Lex · ENISA
+
+          {/* CISA KEV */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "5px 14px", borderRadius: 6,
+            background: "rgba(183, 255, 0, 0.06)", border: "1px solid rgba(183, 255, 0, 0.15)",
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cyan)", animation: "pulse 2s infinite" }} />
+            <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono" }}>LIVE</span>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>CISA KEV</span>
+            <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+              {fetchStatus?.sources?.cisa?.count || 0}
+            </span>
+          </div>
+
+          {/* Federal Register */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "5px 14px", borderRadius: 6,
+            background: "rgba(183, 255, 0, 0.06)", border: "1px solid rgba(183, 255, 0, 0.15)",
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cyan)", animation: "pulse 2s infinite" }} />
+            <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono" }}>LIVE</span>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>US Federal Register</span>
+            <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+              {fetchStatus?.sources?.fedreg?.count || 0}
+            </span>
           </div>
         </div>
-        <button onClick={triggerFetch} disabled={fetching} style={{
-          padding: "8px 18px", borderRadius: 8,
-          background: fetching ? "var(--bg-hover)" : "rgba(34,211,238,0.1)",
-          border: `1px solid ${fetching ? "var(--border)" : "rgba(34,211,238,0.3)"}`,
-          color: fetching ? "var(--text-muted)" : "var(--cyan)",
-          fontSize: 12, cursor: fetching ? "not-allowed" : "pointer",
-          fontFamily: "JetBrains Mono", transition: "all 0.2s",
-        }}>
-          {fetching ? "⟳ Fetching..." : "⟳ Fetch Now"}
-        </button>
+
+        {/* Last fetch timestamp */}
+        {fetchStatus?.last_fetch && (
+          <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginTop: 10 }}>
+            Last fetch: {new Date(fetchStatus.last_fetch).toLocaleString()}
+          </div>
+        )}
       </div>
 
       {/* Charts Row 1 */}
@@ -191,14 +256,14 @@ export default function Dashboard() {
             
             <div style={{ display: "flex", gap: 8 }}>
               {allCountries["International"] > 0 && (
-                <div style={{ background: "rgba(34,211,238,0.1)", border: "1px solid rgba(34,211,238,0.2)", padding: "4px 10px", borderRadius: 6 }}>
-                  <span style={{ fontSize: 10, color: "var(--cyan)", fontFamily: "JetBrains Mono", marginRight: 6 }}>INTL</span>
+                <div style={{ background: "rgba(183, 255, 0, 0.1)", border: "1px solid rgba(183, 255, 0, 0.2)", padding: "4px 10px", borderRadius: 6 }}>
+                  <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono", marginRight: 6 }}>INTL</span>
                   <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600 }}>{allCountries["International"]}</span>
                 </div>
               )}
               {allCountries["European Union"] > 0 && (
-                <div style={{ background: "rgba(34,211,238,0.1)", border: "1px solid rgba(34,211,238,0.2)", padding: "4px 10px", borderRadius: 6 }}>
-                  <span style={{ fontSize: 10, color: "var(--cyan)", fontFamily: "JetBrains Mono", marginRight: 6 }}>EU</span>
+                <div style={{ background: "rgba(183, 255, 0, 0.1)", border: "1px solid rgba(183, 255, 0, 0.2)", padding: "4px 10px", borderRadius: 6 }}>
+                  <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono", marginRight: 6 }}>EU</span>
                   <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600 }}>{allCountries["European Union"]}</span>
                 </div>
               )}
@@ -211,7 +276,7 @@ export default function Dashboard() {
               <Geographies geography="https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json">
                 {({ geographies }) => {
                   const maxPolicies = Math.max(...Object.values(allCountries), 1);
-                  const colorScale = scaleLinear().domain([1, maxPolicies]).range(["#22d3ee", "#0891b2"]);
+                  const colorScale = scaleLinear().domain([1, maxPolicies]).range(["#d9f99d", "#4d7c0f"]);
                   
                   return geographies.map((geo) => {
                     const countryName = geo.properties.name;
@@ -226,7 +291,7 @@ export default function Dashboard() {
                         strokeWidth={0.5}
                         style={{
                           default: { outline: "none" },
-                          hover: { fill: policyCount > 0 ? "#67e8f9" : "#94a3b8", outline: "none", cursor: "pointer" },
+                          hover: { fill: policyCount > 0 ? "#65a30d" : "#e5e7eb", outline: "none", cursor: "pointer" },
                           pressed: { outline: "none" },
                         }}
                         onMouseEnter={() => {

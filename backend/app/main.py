@@ -24,15 +24,16 @@ def startup():
     from app.services.nlp_service import prewarm_ner_cache
     prewarm_ner_cache()
 
-    # Train ML model
+    # Train ML model in background so it doesn't block server startup
+    import threading
     from app.services.recommender import _load_and_train
-    _load_and_train()
+    threading.Thread(target=_load_and_train, daemon=True).start()
 
     # Start live fetcher
     from app.services.scheduler import start_scheduler
     start_scheduler()
 
-    print("🚀 PolicyIQ API running — Live data pipeline active")
+    print("[READY] PolicyIQ API running - Multi-source data pipeline active")
 
 @app.on_event("shutdown")
 def shutdown():

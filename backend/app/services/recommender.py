@@ -23,6 +23,25 @@ _kmeans       = None
 _country_embeddings = {}  # precomputed per-country need embeddings
 N_CLUSTERS    = 6
 
+
+def _parse_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return []
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, list) else [parsed]
+        except json.JSONDecodeError:
+            return [item.strip() for item in value.split(",") if item.strip()]
+    return []
+
 def load_profiles_from_db():
     conn = get_connection()
     profiles = {}
@@ -34,8 +53,8 @@ def load_profiles_from_db():
                 "gdp_tier": r['gdp_tier'],
                 "regulatory_maturity": r['regulatory_maturity'],
                 "context": r['context'],
-                "priority_needs": json.loads(r['priority_needs']),
-                "existing_sectors": json.loads(r['existing_sectors'])
+                "priority_needs": _parse_list(r['priority_needs']),
+                "existing_sectors": _parse_list(r['existing_sectors'])
             }
     except Exception as e:
         print(f"Error loading country profiles: {e}")
@@ -66,7 +85,7 @@ def _load_and_train():
     policies = []
     for row in rows:
         p = dict(row)
-        p["tags"] = json.loads(p["tags"] or "[]")
+        p["tags"] = _parse_list(p.get("tags"))
         policies.append(p)
 
     # Build rich text representation for each policy
@@ -89,12 +108,19 @@ def _load_and_train():
     # _embeddings shape: (30, 384)
 
     # KMeans clustering on embeddings
-    _kmeans = KMeans(n_clusters=N_CLUSTERS, random_state=42, n_init=10)
-    cluster_labels = _kmeans.fit_predict(_embeddings)
+    if len(policies) > 0:
+        actual_clusters = min(N_CLUSTERS, len(policies))
+        _kmeans = KMeans(n_clusters=actual_clusters, random_state=42, n_init=10)
+        cluster_labels = _kmeans.fit_predict(_embeddings)
 
-    for i, p in enumerate(policies):
-        p["cluster"] = int(cluster_labels[i])
-        p["embedding_idx"] = i
+        for i, p in enumerate(policies):
+            p["cluster"] = int(cluster_labels[i])
+            p["embedding_idx"] = i
+    else:
+        _kmeans = None
+        for i, p in enumerate(policies):
+            p["cluster"] = 0
+            p["embedding_idx"] = i
 
     _policy_data = policies
 

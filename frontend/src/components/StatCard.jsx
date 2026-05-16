@@ -1,9 +1,9 @@
 export default function StatCard({ label, value, sub, accent = "cyan", delay = 0 }) {
   const colors = {
-    cyan:  { bg: "rgba(34,211,238,0.07)",  border: "rgba(34,211,238,0.2)",  text: "var(--cyan)"  },
-    amber: { bg: "rgba(245,158,11,0.07)",  border: "rgba(245,158,11,0.2)",  text: "#f59e0b" },
-    green: { bg: "rgba(16,185,129,0.07)",  border: "rgba(16,185,129,0.2)",  text: "#10b981" },
-    indigo:{ bg: "rgba(99,102,241,0.07)",  border: "rgba(99,102,241,0.2)",  text: "#a5b4fc" },
+    cyan:  { bg: "var(--bg-card)", border: "var(--border)", text: "var(--cyan)" },
+    amber: { bg: "var(--bg-card)", border: "var(--border)", text: "var(--cyan)" },
+    green: { bg: "var(--bg-card)", border: "var(--border)", text: "var(--cyan)" },
+    indigo:{ bg: "var(--bg-card)", border: "var(--border)", text: "var(--cyan)" },
   };
   const c = colors[accent] || colors.cyan;
 

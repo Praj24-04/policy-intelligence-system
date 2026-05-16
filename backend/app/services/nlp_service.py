@@ -136,19 +136,14 @@ def load_policies(sector=None, region=None, search=None, status=None):
         p["tags"] = json.loads(p["tags"] or "[]")
         p["tags"] = rank_tags_by_frequency(p)
 
-        # Use cache — never run spaCy on list view
         cached = _get_cached_countries(p["id"], conn)
         if cached is not None:
             p["extracted_countries"] = cached
         else:
             # Use country field directly for speed
             p["extracted_countries"] = [p["country"]] if p.get("country") else []
-            # Save to cache so next time is instant
-            _save_cache(p["id"], p["extracted_countries"], conn)
 
         result.append(p)
-
-        p["penalty_fines"] = extract_fines(p.get("content", ""))
 
     conn.close()
     return result
@@ -217,23 +212,27 @@ def prewarm_ner_cache():
     conn = get_connection()
     try:
         rows = conn.execute(
-            "SELECT id, country FROM policies WHERE extracted_countries_cache IS NULL"
+            "SELECT * FROM policies WHERE extracted_countries_cache IS NULL"
         ).fetchall()
         conn.close()
 
         if not rows:
-            print("✅ NER cache already warm")
+            print("[OK] NER cache already warm")
             return
 
-        print(f"🔄 Pre-warming NER cache for {len(rows)} policies...")
+        print(f"[NER] Pre-warming NER cache for {len(rows)} policies...")
         conn2 = get_connection()
         for row in rows:
-            countries = [row["country"]] if row["country"] else []
-            _save_cache(row["id"], countries, conn2)
+            p = dict(row)
+            try:
+                countries = extract_countries_smart(p)
+            except Exception:
+                countries = [p.get("country")] if p.get("country") else []
+            _save_cache(p["id"], countries, conn2)
         conn2.close()
-        print(f"✅ NER cache warmed for {len(rows)} policies")
+        print(f"[OK] NER cache warmed for {len(rows)} policies")
     except Exception as e:
-        print(f"⚠️ Cache warm failed: {e}")
+        print(f"[WARN] Cache warm failed: {e}")
         try:
             conn.close()
         except Exception:
