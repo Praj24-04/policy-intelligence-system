@@ -51,27 +51,31 @@ export default function Recommend() {
     <div style={{ padding: "28px 32px" }}>
 
       {/* Header */}
-      <div className="fade-up" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <div style={{ width: 3, height: 22, background: "#a78bfa", borderRadius: 2 }} />
-          <h1 style={{ fontFamily: "Syne", fontSize: 22, fontWeight: 800, color: "var(--text-main)" }}>
-            Policy Recommender
-          </h1>
+      <div className="fade-up" style={{ marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
+              <span style={{ color: "var(--cyan)", marginRight: 8 }}>■</span> DISCOVER / INTELLIGENCE
+            </div>
+            <h1 style={{ fontFamily: "Inter", fontSize: 44, fontWeight: 800, color: "var(--text-main)", letterSpacing: "-1px", marginBottom: 16 }}>
+              Find policy <span className="half-highlight">gaps.</span>
+            </h1>
+            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
+              Select a policy to discover which countries would benefit most from adopting it
+            </p>
+          </div>
           <div style={{
-            display: "flex", alignItems: "center", gap: 6, marginLeft: 8,
-            padding: "3px 10px", borderRadius: 20,
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 14px", borderRadius: 20,
             background: "rgba(167,139,250,0.1)",
             border: "1px solid rgba(167,139,250,0.2)"
           }}>
-            <Sparkles size={11} color="#a78bfa" />
-            <span style={{ fontSize: 11, color: "#a78bfa", fontFamily: "JetBrains Mono" }}>
+            <Sparkles size={14} color="#a78bfa" />
+            <span style={{ fontSize: 12, color: "#a78bfa", fontFamily: "JetBrains Mono", fontWeight: 600 }}>
               ML POWERED
             </span>
           </div>
         </div>
-        <p style={{ color: "var(--text-muted)", fontSize: 13, paddingLeft: 13 }}>
-          Select a policy to discover which countries would benefit most from adopting it
-        </p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 20, alignItems: "start" }}>

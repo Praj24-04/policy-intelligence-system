@@ -30,6 +30,8 @@ def get_connection():
 
 def init_db():
     conn = get_connection()
+
+    # ── Core policy tables ───────────────────────────────────────────────
     conn.execute("""
         CREATE TABLE IF NOT EXISTS policies (
             id          TEXT PRIMARY KEY,
@@ -68,6 +70,65 @@ def init_db():
         )
     """)
 
+    # ── User authentication tables ───────────────────────────────────────
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id            SERIAL PRIMARY KEY,
+            email         TEXT UNIQUE NOT NULL,
+            full_name     TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            role          TEXT DEFAULT 'user',
+            created_at    TIMESTAMP DEFAULT NOW()
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id         SERIAL PRIMARY KEY,
+            email      TEXT NOT NULL,
+            token      TEXT NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            used       BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+
+    # ── Per-user history tables ──────────────────────────────────────────
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_uploads (
+            id           SERIAL PRIMARY KEY,
+            user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            filename     TEXT NOT NULL,
+            title        TEXT,
+            tags         TEXT,
+            word_count   INTEGER,
+            result_json  TEXT,
+            created_at   TIMESTAMP DEFAULT NOW()
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_generates (
+            id           SERIAL PRIMARY KEY,
+            user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            country      TEXT NOT NULL,
+            sector       TEXT NOT NULL,
+            result_json  TEXT,
+            created_at   TIMESTAMP DEFAULT NOW()
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_compares (
+            id           SERIAL PRIMARY KEY,
+            user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            policy_id_1  TEXT NOT NULL,
+            policy_id_2  TEXT NOT NULL,
+            result_json  TEXT,
+            created_at   TIMESTAMP DEFAULT NOW()
+        )
+    """)
+
     conn.commit()
     conn.close()
-    print("[OK] PostgreSQL Database initialized")
+    print("[OK] PostgreSQL Database initialized with auth + history tables")

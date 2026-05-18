@@ -40,15 +40,15 @@ export default function Policies() {
   return (
     <div style={{ padding: "28px 32px" }}>
       {/* Header */}
-      <div className="fade-up" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <div style={{ width: 3, height: 22, background: "#818cf8", borderRadius: 2 }} />
-          <h1 style={{ fontFamily: "Syne", fontSize: 22, fontWeight: 800, color: "var(--text-main)" }}>
-            Policy Library
-          </h1>
+      <div className="fade-up" style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
+          <span style={{ color: "var(--cyan)", marginRight: 8 }}>■</span> WORK / BROWSE
         </div>
-        <p style={{ color: "var(--text-muted)", fontSize: 13, paddingLeft: 13 }}>
-          {policies.length} policies · AI Governance · Cybersecurity · Data Privacy
+        <h1 style={{ fontFamily: "Inter", fontSize: 44, fontWeight: 800, color: "var(--text-main)", letterSpacing: "-1px", marginBottom: 16 }}>
+          Search the <span className="half-highlight">database.</span>
+        </h1>
+        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
+          {policies.length} policies from global jurisdictions, updated daily.
         </p>
       </div>
 
@@ -93,7 +93,7 @@ export default function Policies() {
 
       {/* Grid */}
       {loading ? <LoadingSpinner label="Fetching policies..." /> : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {policies.length === 0
             ? <div style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--text-muted)", padding: 48 }}>
                 No policies match your filters.

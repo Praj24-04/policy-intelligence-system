@@ -1,6 +1,37 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List, Optional
+from datetime import datetime
 
+# ── Auth Schemas ────────────────────────────────────────────────────────────
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    full_name: str
+    password: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    role: str
+    created_at: Optional[datetime] = None
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
+
+# ── Policy Schemas ──────────────────────────────────────────────────────────
 class PolicyOut(BaseModel):
     id: str
     title: str

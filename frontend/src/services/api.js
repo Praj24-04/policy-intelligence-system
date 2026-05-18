@@ -1,6 +1,6 @@
 const BASE = "http://localhost:8000/api";
 
-const getToken = () => localStorage.getItem("token");
+export const getToken = () => localStorage.getItem("token");
 
 const get = (url) =>
   fetch(`${BASE}${url}`, {
@@ -22,6 +22,34 @@ const get = (url) =>
     console.error(`API Error [${url}]:`, err);
     return null;
   });
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+const postJson = async (url, body) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+  try {
+    const res = await fetch(`${BASE}${url}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Request failed");
+    return data;
+  } catch (err) {
+    if (err.name === "AbortError") throw new Error("Request timed out. Please try again.");
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+export const loginUser    = (email, password) => postJson("/auth/login", { email, password });
+export const registerUser = (email, full_name, password) => postJson("/auth/register", { email, full_name, password });
+export const forgotPassword = (email) => postJson("/auth/forgot-password", { email });
+export const resetPassword  = (token, new_password) => postJson("/auth/reset-password", { token, new_password });
+export const fetchHistory   = () => get("/auth/history");
 
 // Rest of api.js stays exactly the same
 export const fetchPolicies  = (params = {}) => {

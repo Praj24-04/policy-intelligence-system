@@ -6,7 +6,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, Cell
 } from "recharts";
 
-const COLORS = ["#22d3ee","#818cf8","#34d399","#f59e0b","#f43f5e","#a78bfa","#fb923c","#38bdf8"];
+const COLORS = ["#A3E635", "#78716C", "#0C0A09", "#E7E5E4", "#BEF264", "#D6D3D1"];
 
 export default function Analytics() {
   const [sectors,       setSectors]       = useState([]);
@@ -39,25 +39,25 @@ export default function Analytics() {
 
   const ChartCard = ({ title, sub, children, delay = 1 }) => (
     <div className={`card fade-up fade-up-${delay}`} style={{ padding: "20px 24px" }}>
-      <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 2 }}>{title}</div>
+      <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 2 }}>{title}</div>
       <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>{sub}</div>
       {children}
     </div>
   );
 
-  const TTStyle = { background: "#111827", border: "1px solid #1e2a3a", borderRadius: 8, fontSize: 12 };
+  const TTStyle = { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, color: "var(--text-main)" };
 
   return (
     <div style={{ padding: "28px 32px" }}>
       {/* Header */}
-      <div className="fade-up" style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <div style={{ width: 3, height: 22, background: "#f59e0b", borderRadius: 2 }} />
-          <h1 style={{ fontFamily: "Syne", fontSize: 22, fontWeight: 800, color: "var(--text-main)" }}>
-            Analytics & Insights
-          </h1>
+      <div className="fade-up" style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
+          <span style={{ color: "var(--cyan)", marginRight: 8 }}>■</span> PREP / INSIGHTS
         </div>
-        <p style={{ color: "var(--text-muted)", fontSize: 13, paddingLeft: 13 }}>
+        <h1 style={{ fontFamily: "Inter", fontSize: 44, fontWeight: 800, color: "var(--text-main)", letterSpacing: "-1px", marginBottom: 16 }}>
+          Discover global <span className="half-highlight">trends.</span>
+        </h1>
+        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
           Aggregated view of global policy intelligence data
         </p>
       </div>
@@ -121,7 +121,7 @@ export default function Analytics() {
                   {s.name}
                 </span>
                 <span style={{
-                  fontFamily: "Syne", fontWeight: 800, fontSize: 28,
+                  fontFamily: "Inter", fontWeight: 800, fontSize: 28,
                   color: s.name === "Active" ? "#10b981" : "#f59e0b"
                 }}>
                   {s.value}
@@ -136,7 +136,7 @@ export default function Analytics() {
       {feedbackStats && (
         <div className="card fade-up" style={{ padding: "20px 24px", marginTop: 0 }}>
           <div style={{
-            fontFamily: "Syne", fontWeight: 700,
+            fontFamily: "Inter", fontWeight: 700,
             fontSize: 14, color: "var(--text-main)", marginBottom: 4
           }}>
             Recommendation Feedback
@@ -164,7 +164,7 @@ export default function Analytics() {
                   {s.label}
                 </div>
                 <div style={{
-                  fontFamily: "Syne", fontWeight: 800,
+                  fontFamily: "Inter", fontWeight: 800,
                   fontSize: 24, color: s.color
                 }}>
                   {s.value}

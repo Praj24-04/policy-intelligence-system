@@ -200,16 +200,16 @@ export default function Compare() {
 
   return (
     <div style={{ padding: "28px 32px" }}>
-      <div className="fade-up" style={{ marginBottom: 24 }}>
+      <div className="fade-up" style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <div style={{ width: 3, height: 22, background: "#34d399", borderRadius: 2 }} />
-              <h1 style={{ fontFamily: "Syne", fontSize: 22, fontWeight: 800, color: "var(--text-main)" }}>
-                Policy Comparator
-              </h1>
+            <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
+              <span style={{ color: "var(--cyan)", marginRight: 8 }}>■</span> PREP / ANALYSIS
             </div>
-            <p style={{ color: "var(--text-muted)", fontSize: 13, paddingLeft: 13 }}>
+            <h1 style={{ fontFamily: "Inter", fontSize: 44, fontWeight: 800, color: "var(--text-main)", letterSpacing: "-1px", marginBottom: 16 }}>
+              Compare frameworks <span className="half-highlight">side-by-side.</span>
+            </h1>
+            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
               {step === 1
                 ? "Step 1 — Select first policy"
                 : step === 2
@@ -265,7 +265,7 @@ export default function Compare() {
                   <div style={{ fontSize: 10, fontFamily: "JetBrains Mono", color: i === 0 ? "#818cf8" : "var(--cyan)", marginBottom: 8 }}>
                     POLICY {i === 0 ? "A" : "B"}
                   </div>
-                  <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 8 }}>
+                  <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 8 }}>
                     {p.title}
                   </div>
                   <SectorBadge sector={p.sector} />
@@ -419,7 +419,7 @@ export default function Compare() {
             <div className="card" style={{ padding: "22px 26px", borderColor: "rgba(245,158,11,0.25)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                 <Lightbulb size={15} color="#f59e0b" />
-                <span style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>
+                <span style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>
                   AI-Generated Insights
                 </span>
               </div>
@@ -486,7 +486,7 @@ export default function Compare() {
               padding: "10px 20px", borderRadius: 8,
               background: "linear-gradient(135deg, var(--cyan-dim), #0e7490)",
               border: "none", color: "#fff",
-              fontFamily: "Syne", fontWeight: 700,
+              fontFamily: "Inter", fontWeight: 700,
               fontSize: 13, cursor: "pointer",
             }}>
               ⬇ Download Comparison Report (PDF)
@@ -516,7 +516,7 @@ export default function Compare() {
           </div>
 
           <div style={{ maxHeight: 600, overflowY: "auto", paddingRight: 4 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
               {policies.map((p, i) => (
                 <PolicyCard
                   key={p.id} policy={p} delay={(i % 5) + 1}

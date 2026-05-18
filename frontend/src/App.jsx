@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
+import DashboardNavbar from "./components/DashboardNavbar";
 import Dashboard from "./pages/Dashboard";
 import Policies from "./pages/Policies";
 import PolicyDetail from "./pages/PolicyDetail";
@@ -23,8 +24,9 @@ export default function App() {
     }
   }, []);
 
-  const handleLogin = (data) => {
-    setUser({ username: data.username, role: data.role, full_name: data.full_name });
+  const handleLogin = (userObj) => {
+    // userObj is the `user` field from TokenResponse: { id, email, full_name, role }
+    setUser(userObj);
   };
 
   const handleLogout = () => {
@@ -49,19 +51,22 @@ export default function App() {
     <BrowserRouter>
       <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-deep)" }}>
         <Sidebar user={user} onLogout={handleLogout} />
-        <main style={{ flex: 1, overflowY: "auto", minHeight: "100vh" }}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/policies" element={<Policies />} />
-            <Route path="/policies/:id" element={<PolicyDetail />} />
-            <Route path="/compare" element={<Compare />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/recommend" element={<Recommend />} />
-            <Route path="/upload" element={<UploadPolicy />} />
-            <Route path="/generate" element={<GeneratePolicy />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </main>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", height: "100vh" }}>
+          <DashboardNavbar user={user} />
+          <main style={{ flex: 1, overflowY: "auto" }}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/policies" element={<Policies />} />
+              <Route path="/policies/:id" element={<PolicyDetail />} />
+              <Route path="/compare" element={<Compare />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/recommend" element={<Recommend />} />
+              <Route path="/upload" element={<UploadPolicy />} />
+              <Route path="/generate" element={<GeneratePolicy />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </main>
+        </div>
       </div>
     </BrowserRouter>
   );

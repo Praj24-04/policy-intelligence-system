@@ -10,16 +10,16 @@ import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
 
 const SECTOR_COLORS  = { 
-  "AI Governance": "#a3e635", 
-  "Cybersecurity": "#84cc16", 
-  "Data Privacy": "#65a30d",
-  "Financial Regulation": "#4d7c0f",
-  "Healthcare AI": "#3f6212",
-  "ESG Policies": "#bef264",
-  "POSH Policies": "#d9f99d",
-  "IoT and Robotics": "#166534"
+  "AI Governance": "#A3E635", 
+  "Cybersecurity": "#78716C", 
+  "Data Privacy": "#0C0A09",
+  "Financial Regulation": "#E7E5E4",
+  "Healthcare AI": "#BEF264",
+  "ESG Policies": "#D6D3D1",
+  "POSH Policies": "#A8A29E",
+  "IoT and Robotics": "#57534E"
 };
-const REGION_COLORS  = ["#a3e635","#84cc16","#65a30d","#4d7c0f","#3f6212","#bef264","#d9f99d"];
+const REGION_COLORS  = ["#A3E635", "#78716C", "#0C0A09", "#E7E5E4", "#BEF264", "#D6D3D1"];
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -27,7 +27,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return (
     <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 14px", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}>
       {displayLabel && <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 2 }}>{displayLabel}</div>}
-      <div style={{ fontSize: 15, fontFamily: "Syne", fontWeight: 700, color: "var(--cyan)" }}>
+      <div style={{ fontSize: 15, fontFamily: "Inter", fontWeight: 700, color: "var(--cyan)" }}>
         {payload[0].value}
       </div>
     </div>
@@ -95,15 +95,15 @@ export default function Dashboard() {
   return (
     <div style={{ padding: "28px 32px" }}>
       {/* Header */}
-      <div className="fade-up" style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <div style={{ width: 3, height: 22, background: "var(--cyan)", borderRadius: 2 }} />
-          <h1 style={{ fontFamily: "Syne", fontSize: 22, fontWeight: 800, color: "var(--text-main)" }}>
-            Intelligence Dashboard
-          </h1>
+      <div className="fade-up" style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
+          <span style={{ color: "var(--cyan)", marginRight: 8 }}>■</span> WORK / OVERVIEW
         </div>
-        <p style={{ color: "var(--text-muted)", fontSize: 13, paddingLeft: 13 }}>
-         Global policy landscape · {overview ? overview.total_sectors : "8"} sectors · Live data pipeline · ML-powered recommendations
+        <h1 style={{ fontFamily: "Inter", fontSize: 44, fontWeight: 800, color: "var(--text-main)", letterSpacing: "-1px", marginBottom: 16 }}>
+          Global policy <span className="half-highlight">landscape.</span>
+        </h1>
+        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
+         {overview ? overview.total_sectors : "8"} sectors · Live data pipeline · ML-powered recommendations
         </p>
       </div>
 
@@ -217,7 +217,7 @@ export default function Dashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
         {/* Sector Pie */}
         <div className="card fade-up fade-up-2" style={{ padding: "20px 24px" }}>
-          <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
+          <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
             Sector Distribution
           </div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Policy breakdown by domain</div>
@@ -248,7 +248,7 @@ export default function Dashboard() {
         <div className="card fade-up fade-up-3" style={{ padding: "20px 24px", position: "relative" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
             <div>
-              <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
+              <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
                 Global Policy Map
               </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Policies mapped by jurisdiction</div>
@@ -331,7 +331,7 @@ export default function Dashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {/* Year Trend */}
         <div className="card fade-up fade-up-4" style={{ padding: "20px 24px" }}>
-          <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
+          <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
             Policy Adoption Timeline
           </div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Policies enacted by year</div>
@@ -348,7 +348,7 @@ export default function Dashboard() {
 
         {/* Top Countries */}
         <div className="card fade-up fade-up-5" style={{ padding: "20px 24px" }}>
-          <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
+          <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
             Top Jurisdictions by NER
           </div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Countries extracted via spaCy NLP</div>

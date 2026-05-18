@@ -53,27 +53,31 @@ export default function UploadPolicy() {
   return (
     <div style={{ padding: "28px 32px" }}>
       {/* Header */}
-      <div className="fade-up" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <div style={{ width: 3, height: 22, background: "#f59e0b", borderRadius: 2 }} />
-          <h1 style={{ fontFamily: "Syne", fontSize: 22, fontWeight: 800, color: "var(--text-main)" }}>
-            Upload Policy Document
-          </h1>
+      <div className="fade-up" style={{ marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
+              <span style={{ color: "var(--cyan)", marginRight: 8 }}>■</span> DISCOVER / INGESTION
+            </div>
+            <h1 style={{ fontFamily: "Inter", fontSize: 44, fontWeight: 800, color: "var(--text-main)", letterSpacing: "-1px", marginBottom: 16 }}>
+              Analyze custom <span className="half-highlight">documents.</span>
+            </h1>
+            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
+              Upload any policy PDF to get ML-powered recommendations and similarity analysis
+            </p>
+          </div>
           <div style={{
-            display: "flex", alignItems: "center", gap: 6, marginLeft: 8,
-            padding: "3px 10px", borderRadius: 20,
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 14px", borderRadius: 20,
             background: "rgba(245,158,11,0.1)",
             border: "1px solid rgba(245,158,11,0.2)"
           }}>
-            <Sparkles size={11} color="#f59e0b" />
-            <span style={{ fontSize: 11, color: "#f59e0b", fontFamily: "JetBrains Mono" }}>
+            <Sparkles size={14} color="#f59e0b" />
+            <span style={{ fontSize: 12, color: "#f59e0b", fontFamily: "JetBrains Mono", fontWeight: 600 }}>
               PDF ANALYSIS
             </span>
           </div>
         </div>
-        <p style={{ color: "var(--text-muted)", fontSize: 13, paddingLeft: 13 }}>
-          Upload any policy PDF to get ML-powered recommendations and similarity analysis
-        </p>
       </div>
 
       {/* Upload Zone */}
