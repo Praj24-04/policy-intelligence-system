@@ -1,43 +1,104 @@
-# Global Policy Intelligence System
+# PolicyIQ — Global Policy Intelligence System
 
-A full-stack AI-powered platform for aggregating, analyzing, and recommending global policies across AI Governance, Cybersecurity, and Data Privacy sectors.
+PolicyIQ is a full-stack, AI-powered platform designed for aggregating, analyzing, and generating global policy intelligence. It provides deep regulatory insights across critical sectors like AI Governance, Cybersecurity, Data Privacy, and ESG.
 
-## Tech Stack
-- **Frontend:** React, Tailwind CSS, Recharts, Framer Motion
-- **Backend:** FastAPI, SQLite, Python
-- **ML/NLP:** spaCy (NER), TF-IDF, KMeans Clustering
+## 🌟 Key Features
 
-## Features
-- 30 real-world policies across 3 sectors
-- NLP-based country extraction (spaCy NER)
-- Policy comparison with AI insights
-- ML recommendation engine (TF-IDF + KMeans + Need-Gap Scoring)
-- Interactive analytics dashboard
+### 1. Premium SaaS Dashboard
+- **Modern Aesthetic:** A sleek "black-and-lime" visual identity matching enterprise-grade design standards.
+- **Categorized Navigation:** Streamlined sidebar categorization (WORK, PREP, DISCOVER, ACCOUNT).
+- **Interactive Grids & Cards:** Explore the live policy database via a responsive grid filled with dynamic, information-rich "Job Box" style policy cards.
+- **Light / Dark Mode:** Full cross-theme support via a persistent global toggle.
 
-## Setup
+### 2. Global Policy Database
+- **Live Ingestion Pipeline:** Uses `apscheduler` to fetch real-world policies and append them alongside curated Foundational Standards (GDPR, HIPAA, EU AI Act).
+- **Sector Segmentation:** Advanced filtering across key sectors (AI Governance, IoT, Cybersecurity, POSH, ESG, etc.).
+- **Rich Metadata:** Tracks jurisdiction, enforcement power, technical specificity, and adoption year.
 
-### Backend
+### 3. ML-Powered Policy Recommender
+- **Strategic Adoption Matches:** Employs TF-IDF and KMeans clustering to match policy frameworks with countries based on their regulatory maturity and GDP tier.
+- **Semantic Similarity (BERT):** Uses SentenceTransformers to find thematically identical policies across borders.
+- **Human-in-the-Loop Feedback:** Users can vote on the relevance of ML recommendations, continuously refining system accuracy.
+
+### 4. Advanced Policy Comparator
+- **Side-by-Side Analysis:** Instantly compare any two policies in the database.
+- **Gap Detection:** Automatically identifies verbatim orphaned clauses, unique focus areas, and shared ML-extracted themes.
+- **Export to PDF:** Generates formatted `jsPDF` reports of the comparison directly from the browser.
+
+### 5. Custom Document Ingestion
+- **PDF Uploads:** Upload proprietary policy documents (`.pdf`) for instant NLP analysis.
+- **Auto-Tagging:** Extracts word counts, countries (via spaCy NER), sectors, and summarizes key constraints.
+
+### 6. AI Policy Template Generator
+- **Drafting Assistant:** Automatically drafts comprehensive regulatory frameworks tailored to specific countries and sectors.
+- **Gap Analysis Context:** Adjusts the generated language based on whether it is supplementing an existing framework or filling a total regulatory void.
+- **Text Export:** One-click download of the generated template as a `.txt` file.
+
+### 7. Interactive Analytics
+- **Live Visualizations:** Powered by `Recharts` for geographic distribution (radar charts), chronological adoption (bar charts), and ML-feedback accuracy.
+
+---
+
+## 🛠️ Technology Stack
+
+**Frontend**
+- **Framework:** React.js (Vite)
+- **Styling:** Vanilla CSS (CSS Variables) + Tailwind CSS
+- **Components:** Framer Motion (animations), Lucide React (iconography), Recharts (data viz)
+- **Exports:** jsPDF, jsPDF-AutoTable
+
+**Backend**
+- **Framework:** FastAPI (Python)
+- **Database:** PostgreSQL (psycopg2)
+- **Security:** JWT Authentication, Bcrypt password hashing
+- **ML & Data:** spaCy (NER), SentenceTransformers (Embeddings/Similarity), Scikit-Learn (TF-IDF/KMeans)
+- **Background Tasks:** APScheduler
+
+---
+
+## 🚀 Setup & Installation
+
+### Prerequisites
+- Node.js (v16+)
+- Python (v3.9+)
+- PostgreSQL installed and running on default port `5432`
+
+### 1. Database Configuration
+Ensure PostgreSQL is running and create a database named `policy_db` with credentials matching your local environment (default: `postgres` / `admin123`).
+
+### 2. Backend Setup
+Navigate to the `backend` directory, create a virtual environment, and install dependencies:
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate
+# On Windows: venv\Scripts\activate
+# On Mac/Linux: source venv/bin/activate
+
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
-python scripts/seed_db.py
+```
+
+Initialize the database schema:
+```bash
+python check_tables.py
+```
+
+Run the backend server:
+```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend
+### 3. Frontend Setup
+Navigate to the `frontend` directory:
 ```bash
 cd frontend
 npm install
 npm start
 ```
 
-## API Endpoints
-| Endpoint | Description |
-|---|---|
-| `GET /api/policies/` | All policies with filters |
-| `GET /api/analytics/overview` | Dashboard stats |
-| `GET /api/compare?id1=x&id2=y` | Compare two policies |
-| `GET /api/recommend/{id}` | ML recommendations |
+Navigate to `http://localhost:3000` in your browser. Create an account via the Sign Up page to access the PolicyIQ dashboard!
+
+---
+
+## 🔒 Security Note
+This project utilizes `.env` files for managing secrets (e.g., JWT signing keys, PostgreSQL credentials). Ensure you copy `backend/.env.example` to `backend/.env` and update the values before deploying to production.
