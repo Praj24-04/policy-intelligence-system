@@ -1,3 +1,4 @@
+# DEPRECATED: Use app/ml/comparator_v2.py
 import re
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer

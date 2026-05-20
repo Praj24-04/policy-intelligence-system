@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
-from app.routes import policies, analytics, compare, recommend, upload, auth, fetch, feedback, generate
+from app.routes import policies, analytics, compare, recommend, upload, auth, fetch, feedback, generate, ml
 app = FastAPI(
     title="Global Policy Intelligence API",
     description="AI-powered policy analysis — Live data from OECD, CISA, EUR-Lex, ENISA",
@@ -17,7 +17,7 @@ app.add_middleware(
 )
 
 @app.on_event("startup")
-def startup():
+async def startup():
     init_db()
 
     # Pre-warm NER cache
@@ -29,16 +29,26 @@ def startup():
     from app.services.recommender import _load_and_train
     threading.Thread(target=_load_and_train, daemon=True).start()
 
-    # Start live fetcher
-    from app.services.scheduler import start_scheduler
-    start_scheduler()
+    # Start new ML scheduler
+    from app.ml.scheduler import start_scheduler, embed_new_policies
+    scheduler = start_scheduler()
+    app.state.scheduler = scheduler
+
+    # Run check for unembedded policies immediately
+    try:
+        await embed_new_policies()
+    except Exception as e:
+        print(f"[WARN] Failed running immediate policy embedding check on startup: {e}")
 
     print("[READY] PolicyIQ API running - Multi-source data pipeline active")
 
+
 @app.on_event("shutdown")
 def shutdown():
-    from app.services.scheduler import stop_scheduler
-    stop_scheduler()
+    # Stop new ML scheduler
+    if hasattr(app.state, "scheduler"):
+        from app.ml.scheduler import stop_scheduler
+        stop_scheduler(app.state.scheduler)
 
 app.include_router(auth.router,      prefix="/api/auth",      tags=["Auth"])
 app.include_router(policies.router,  prefix="/api/policies",  tags=["Policies"])
@@ -49,6 +59,7 @@ app.include_router(upload.router,    prefix="/api/upload",    tags=["Upload"])
 app.include_router(fetch.router,     prefix="/api/fetch",     tags=["Live Fetch"])
 app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
 app.include_router(generate.router, prefix="/api/generate", tags=["Generate"])
+app.include_router(ml.router,        prefix="/api/ml",        tags=["ML System"])
 
 @app.get("/")
 def root():
@@ -59,3 +70,5 @@ def root():
         "data_sources": ["OECD", "CISA", "EUR-Lex", "ENISA"],
         "docs": "/docs"
     }
+
+# trigger reload

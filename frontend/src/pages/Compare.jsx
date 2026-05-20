@@ -255,213 +255,236 @@ export default function Compare() {
           {/* Comparison View */}
           <div>
 
+            {/* Premium V2 Overall Similarity Banner */}
+            {result.overall_metrics && (
+              <div className="card" style={{
+                padding: "20px 24px", marginBottom: 20,
+                background: "linear-gradient(135deg, rgba(34,211,238,0.06) 0%, rgba(129,140,248,0.06) 100%)",
+                borderColor: "rgba(34,211,238,0.25)",
+                textAlign: "center"
+              }}>
+                <div style={{ fontSize: 10, color: "var(--cyan)", fontFamily: "JetBrains Mono", marginBottom: 6, letterSpacing: "1px" }}>
+                  COMPOSITE REGULATORY ALIGNMENT
+                </div>
+                <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 50, color: "var(--cyan)", lineHeight: 1.1 }}>
+                  {Math.round(result.overall_metrics.composite_score * 100)}%
+                </div>
+                <div style={{ fontSize: 13, fontFamily: "Inter", fontWeight: 700, color: "var(--text-main)", marginTop: 6, letterSpacing: "0.5px" }}>
+                  {result.overall_metrics.similarity_label}
+                </div>
+                
+                <div style={{ display: "flex", justifyContent: "center", gap: 32, marginTop: 16, borderTop: "1px dashed var(--border)", paddingTop: 14 }}>
+                  {[
+                    { label: "Semantic Sim.", val: result.overall_metrics.semantic_similarity },
+                    { label: "Cross-Encoder (Sigmoid)", val: result.overall_metrics.cross_encoder_normalized },
+                    { label: "Jaccard Tag Sim.", val: result.overall_metrics.jaccard_coefficient }
+                  ].map(metric => (
+                    <div key={metric.label}>
+                      <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 4 }}>
+                        {metric.label}
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-main)", fontFamily: "JetBrains Mono" }}>
+                        {Math.round(metric.val * 100)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Policy Cards Side by Side */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-              {[result.policy_1, result.policy_2].map((p, i) => (
-                <div key={i} className="card" style={{
-                  padding: "18px 22px",
-                  borderColor: i === 0 ? "#818cf8" : "var(--cyan)"
-                }}>
-                  <div style={{ fontSize: 10, fontFamily: "JetBrains Mono", color: i === 0 ? "#818cf8" : "var(--cyan)", marginBottom: 8 }}>
-                    POLICY {i === 0 ? "A" : "B"}
-                  </div>
-                  <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 8 }}>
-                    {p.title}
-                  </div>
-                  <SectorBadge sector={p.sector} />
-                  <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--text-muted)" }}>
-                    <span>{p.country}</span>
-                    <span>{p.year}</span>
-                    <span>{p.region}</span>
-                  </div>
-
-                  {/* Tags */}
-                  {p.tags?.length > 0 && (
-                    <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {p.tags.slice(0, 4).map(t => (
-                        <span key={t} style={{
-                          fontSize: 10, padding: "2px 7px", borderRadius: 4,
-                          background: "var(--bg-hover)", color: "var(--text-muted)",
-                          border: "1px solid var(--border)", fontFamily: "JetBrains Mono"
-                        }}>
-                          {t}
-                        </span>
-                      ))}
+              {[(result.policy1 || result.policy_1), (result.policy2 || result.policy_2)].map((p, i) => {
+                if (!p) return null;
+                return (
+                  <div key={i} className="card" style={{
+                    padding: "18px 22px",
+                    borderColor: i === 0 ? "#818cf8" : "var(--cyan)"
+                  }}>
+                    <div style={{ fontSize: 10, fontFamily: "JetBrains Mono", color: i === 0 ? "#818cf8" : "var(--cyan)", marginBottom: 8 }}>
+                      POLICY {i === 0 ? "A" : "B"}
                     </div>
-                  )}
+                    <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 8 }}>
+                      {p.title}
+                    </div>
+                    <SectorBadge sector={p.sector} />
+                    <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--text-muted)" }}>
+                      <span>{p.country}</span>
+                      <span>{p.year}</span>
+                      <span>{p.region}</span>
+                    </div>
 
-                  {/* Multi-Dimensional Rubric */}
-                  {p.rubric && (
-                    <div style={{ marginTop: 14 }}>
-                      <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 8, borderBottom: "1px solid var(--border)", paddingBottom: 4 }}>
-                        REGULATORY RUBRIC SCORES
+                    {/* Approach */}
+                    {p.approach && (
+                      <div style={{ marginTop: 8 }}>
+                        <span style={{
+                          fontSize: 10, padding: "2px 7px", borderRadius: 4,
+                          background: "rgba(245,158,11,0.08)", color: "#f59e0b",
+                          border: "1px solid rgba(245,158,11,0.2)", fontFamily: "JetBrains Mono"
+                        }}>
+                          {p.approach} Approach
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Tags */}
+                    {p.tags?.length > 0 && (
+                      <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                        {p.tags.slice(0, 5).map(t => (
+                          <span key={t} style={{
+                            fontSize: 10, padding: "2px 7px", borderRadius: 4,
+                            background: "var(--bg-hover)", color: "var(--text-muted)",
+                            border: "1px solid var(--border)", fontFamily: "JetBrains Mono"
+                          }}>
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 6-Dimensional Analysis Grid */}
+            {result.dimensional_breakdown && (
+              <div className="card" style={{ padding: "20px 24px", marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: "var(--cyan)", fontFamily: "JetBrains Mono", marginBottom: 14, letterSpacing: "0.5px" }}>
+                  6-DIMENSIONAL REGULATORY ANALYSIS
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  {Object.entries(result.dimensional_breakdown).map(([dimName, info]) => (
+                    <div key={dimName} style={{ background: "rgba(255,255,255,0.015)", border: "1px solid var(--border)", borderRadius: 8, padding: "12px 16px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-main)", textTransform: "capitalize" }}>
+                          {dimName}
+                        </span>
+                        <span style={{ fontSize: 10, fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>
+                          Gap: {Math.round(info.gap * 100)}% (Dom: {info.dominant === "policy1" ? "Policy A" : "Policy B"})
+                        </span>
                       </div>
                       
-                      {[
-                        { label: "Prescriptiveness", score: p.rubric.prescriptiveness, color: "#f43f5e" },
-                        { label: "Rights Orientation", score: p.rubric.rights_orientation, color: "#34d399" },
-                        { label: "Tech Specificity", score: p.rubric.technical_specificity, color: "#818cf8" },
-                        { label: "Enforcement Power", score: p.rubric.enforcement_power, color: "#f59e0b" }
-                      ].map(dim => (
-                        <div key={dim.label} style={{ marginBottom: 6 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>
-                            <span>{dim.label}</span>
-                            <span style={{ color: dim.color }}>{dim.score}/100</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {/* Policy A Strength Bar */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 10, width: 50, color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>Policy A</span>
+                          <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3 }}>
+                            <div style={{ width: `${Math.round(info.strength_policy1 * 100)}%`, height: "100%", background: "#818cf8", borderRadius: 3 }} />
                           </div>
-                          <div style={{ width: "100%", height: 4, background: "var(--bg-hover)", borderRadius: 2 }}>
-                            <div style={{ width: `${dim.score}%`, height: "100%", background: dim.color, borderRadius: 2 }} />
-                          </div>
+                          <span style={{ fontSize: 10, color: "#818cf8", width: 35, fontFamily: "JetBrains Mono", textAlign: "right" }}>
+                            {Math.round(info.strength_policy1 * 100)}%
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Unique Focus Areas (ML TF-IDF) */}
-                  {i === 0 && result.ml_metrics?.themes?.unique_1?.length > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 4 }}>
-                        ML-EXTRACTED UNIQUE FOCUS
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {result.ml_metrics.themes.unique_1.map(t => (
-                          <span key={t} style={{
-                            fontSize: 10, padding: "2px 7px", borderRadius: 4,
-                            background: "rgba(129,140,248,0.12)",
-                            color: "#818cf8",
-                            border: "1px solid rgba(129,140,248,0.3)",
-                            fontFamily: "JetBrains Mono"
-                          }}>
-                            ★ {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {i === 1 && result.ml_metrics?.themes?.unique_2?.length > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 4 }}>
-                        ML-EXTRACTED UNIQUE FOCUS
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {result.ml_metrics.themes.unique_2.map(t => (
-                          <span key={t} style={{
-                            fontSize: 10, padding: "2px 7px", borderRadius: 4,
-                            background: "rgba(34,211,238,0.1)",
-                            color: "var(--cyan)",
-                            border: "1px solid rgba(34,211,238,0.25)",
-                            fontFamily: "JetBrains Mono"
-                          }}>
-                            ★ {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Clause Gaps (Sentence Matrices) */}
-                  {i === 0 && result.ml_metrics?.clause_gaps?.orphaned_in_1?.length > 0 && (
-                    <div style={{ marginTop: 14 }}>
-                      <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 6 }}>
-                        VERBATIM ORPHANED CLAUSES (GAP)
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {result.ml_metrics.clause_gaps.orphaned_in_1.map((gap, idx) => (
-                          <div key={idx} style={{ 
-                            fontSize: 11, color: "var(--text-muted)", 
-                            background: "rgba(129,140,248,0.05)", borderLeft: "2px solid #818cf8",
-                            padding: "6px 10px", lineHeight: 1.4, borderRadius: "0 4px 4px 0"
-                          }}>
-                            "{gap.text}"
+                        {/* Policy B Strength Bar */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 10, width: 50, color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>Policy B</span>
+                          <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3 }}>
+                            <div style={{ width: `${Math.round(info.strength_policy2 * 100)}%`, height: "100%", background: "var(--cyan)", borderRadius: 3 }} />
                           </div>
-                        ))}
+                          <span style={{ fontSize: 10, color: "var(--cyan)", width: 35, fontFamily: "JetBrains Mono", textAlign: "right" }}>
+                            {Math.round(info.strength_policy2 * 100)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  )}
-                  {i === 1 && result.ml_metrics?.clause_gaps?.orphaned_in_2?.length > 0 && (
-                    <div style={{ marginTop: 14 }}>
-                      <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 6 }}>
-                        VERBATIM ORPHANED CLAUSES (GAP)
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {result.ml_metrics.clause_gaps.orphaned_in_2.map((gap, idx) => (
-                          <div key={idx} style={{ 
-                            fontSize: 11, color: "var(--text-muted)", 
-                            background: "rgba(34,211,238,0.05)", borderLeft: "2px solid var(--cyan)",
-                            padding: "6px 10px", lineHeight: 1.4, borderRadius: "0 4px 4px 0"
-                          }}>
-                            "{gap.text}"
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Penalty Fines Summary */}
-                  {p.penalty_fines?.has_fines && (
-                    <div style={{
-                      marginTop: 10, padding: "8px 10px", borderRadius: 6,
-                      background: "rgba(244,63,94,0.06)",
-                      border: "1px solid rgba(244,63,94,0.15)",
-                    }}>
-                      <div style={{ fontSize: 10, color: "#f43f5e", fontFamily: "JetBrains Mono", marginBottom: 4 }}>
-                        ⚖ PENALTIES
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-main)", lineHeight: 1.5 }}>
-                        {p.penalty_fines.summary}
-                      </div>
-                    </div>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* Tag Gap Analysis */}
+            {(result.shared_tags || result.only_policy1_tags || result.only_policy2_tags) && (
+              <div className="card" style={{ padding: "20px 24px", marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: "var(--cyan)", fontFamily: "JetBrains Mono", marginBottom: 14, letterSpacing: "0.5px" }}>
+                  TAG GAP CLOUD ANALYSIS
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+                  {/* Shared Tags */}
+                  <div style={{ background: "rgba(16,185,129,0.01)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 10, color: "#10b981", fontWeight: 700, fontFamily: "JetBrains Mono", marginBottom: 10 }}>
+                      SHARED FOCUS TAGS ({result.shared_tags?.length || 0})
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {result.shared_tags?.length > 0 ? (
+                        result.shared_tags.map(t => (
+                          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "rgba(16,185,129,0.08)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>
+                            {t}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>No shared focus tags</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Only Policy A Tags */}
+                  <div style={{ background: "rgba(129,140,248,0.01)", border: "1px solid rgba(129,140,248,0.15)", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, fontFamily: "JetBrains Mono", marginBottom: 10 }}>
+                      UNIQUE TO POLICY A ({result.only_policy1_tags?.length || 0})
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {result.only_policy1_tags?.length > 0 ? (
+                        result.only_policy1_tags.map(t => (
+                          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "rgba(129,140,248,0.08)", color: "#818cf8", border: "1px solid rgba(129,140,248,0.2)" }}>
+                            {t}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>No unique tags</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Only Policy B Tags */}
+                  <div style={{ background: "rgba(6,182,212,0.01)", border: "1px solid rgba(6,182,212,0.15)", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: 700, fontFamily: "JetBrains Mono", marginBottom: 10 }}>
+                      UNIQUE TO POLICY B ({result.only_policy2_tags?.length || 0})
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {result.only_policy2_tags?.length > 0 ? (
+                        result.only_policy2_tags.map(t => (
+                          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "rgba(6,182,212,0.08)", color: "var(--cyan)", border: "1px solid rgba(6,182,212,0.2)" }}>
+                            {t}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>No unique tags</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Insights Panel */}
             <div className="card" style={{ padding: "22px 26px", borderColor: "rgba(245,158,11,0.25)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                 <Lightbulb size={15} color="#f59e0b" />
                 <span style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>
-                  AI-Generated Insights
+                  AI-Generated Strategic Insights
                 </span>
               </div>
 
-              {/* Semantic Alignment Bar */}
-              {result.ml_metrics && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 11, fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>
-                    <span>SEMANTIC ALIGNMENT (BERT)</span>
-                    <span style={{ color: "var(--cyan)" }}>{Math.round(result.ml_metrics.semantic_similarity_score * 100)}%</span>
-                  </div>
-                  <div style={{ width: "100%", height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
-                    <div style={{ 
-                      width: `${Math.round(result.ml_metrics.semantic_similarity_score * 100)}%`, 
-                      height: "100%", 
-                      background: "linear-gradient(90deg, #818cf8, var(--cyan))",
-                      transition: "width 1s ease-out"
-                    }} />
-                  </div>
+              {/* Dynamic Insights list */}
+              {result.insights?.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                  {result.insights.map((insight, idx) => (
+                    <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
+                      <span style={{ color: "#f59e0b", fontWeight: 900, marginRight: 2 }}>•</span>
+                      <span>{insight}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 16 }}>
+                  No structural comparative insights loaded.
                 </div>
               )}
 
-              {/* Summary Row */}
-              <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                  {result.same_sector
-                    ? <><CheckCircle2 size={13} color="#10b981" /><span style={{ color: "#10b981" }}>Same sector</span></>
-                    : <><XCircle size={13} color="#f43f5e" /><span style={{ color: "#f43f5e" }}>Different sectors</span></>
-                  }
-                </div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  ML Shared Focus:{" "}
-                  <span style={{ color: result.ml_metrics?.themes?.shared?.length ? "var(--cyan)" : "var(--text-dim)" }}>
-                    {result.ml_metrics?.themes?.shared?.length > 0 ? result.ml_metrics.themes.shared.join(", ") : "None"}
-                  </span>
-                </div>
-              </div>
-
               {/* Source Links */}
-              <div style={{ display: "flex", gap: 12, marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
-                {[result.policy_1, result.policy_2].map((p, i) => (
-                  p.source_url ? (
+              <div style={{ display: "flex", gap: 12, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+                {[(result.policy1 || result.policy_1), (result.policy2 || result.policy_2)].map((p, i) => (
+                  p?.source_url ? (
                     <a key={i} href={p.source_url} target="_blank" rel="noreferrer"
                       style={{
                         fontSize: 11, color: i === 0 ? "#818cf8" : "var(--cyan)",

@@ -1,3 +1,4 @@
+# DEPRECATED: Use app/ml/recommender_v2.py
 import sys
 import json
 import numpy as np
@@ -357,96 +358,6 @@ def get_recommendations(policy_id: str, top_n: int = 6) -> dict:
     }
 
 
-def get_recommendations_for_text(text: str, tags: list, title: str, top_n: int = 6) -> dict:
-    _ensure_trained()
-
-    tags_text = " ".join(tags)
-    rich_text = f"Title: {title}. Focus areas: {tags_text}. Content: {text}"
-
-    upload_emb = _model.encode([rich_text])
-
-    # Similar policies
-    sims = cosine_similarity(upload_emb, _embeddings).flatten()
-    similar = []
-    for i, sim in enumerate(sims):
-        if sim > 0.2:
-            p = _policy_data[i]
-            similar.append({
-                "id": p["id"],
-                "title": p["title"],
-                "country": p["country"],
-                "sector": p["sector"],
-                "year": p.get("year"),
-                "similarity": round(float(sim), 3)
-            })
-    similar = sorted(similar, key=lambda x: -x["similarity"])[:5]
-
-    top_sector = similar[0]["sector"] if similar else "AI Governance"
-
-    temp_policy = {
-        "id": "uploaded",
-        "title": title,
-        "content": text,
-        "tags": tags,
-        "sector": top_sector,
-        "country": "Unknown",
-        "year": None,
-        "embedding_idx": None,
-    }
-
-    # For uploaded text, compute embedding on the fly
-    upload_emb_vec = upload_emb[0]
-
-    scored = []
-    for country, profile in COUNTRY_PROFILES.items():
-        score = 0.0
-
-        # Semantic match against country needs
-        if country in _country_embeddings:
-            country_emb = _country_embeddings[country].reshape(1, -1)
-            sem_sim = float(cosine_similarity(upload_emb, country_emb)[0][0])
-            score += sem_sim * 0.50
-
-        # Sector gap
-        if top_sector not in profile["existing_sectors"]:
-            score += 0.25
-        else:
-            score += 0.05
-
-        # Maturity
-        maturity_map = {"nascent": 0.15, "emerging": 0.10, "developing": 0.05, "advanced": 0.01}
-        score += maturity_map.get(profile["regulatory_maturity"], 0.05)
-
-        # Existing coverage penalty
-        country_indices = [i for i, p in enumerate(_policy_data) if p["country"] == country]
-        if country_indices:
-            country_embs = _embeddings[country_indices]
-            existing_sims = cosine_similarity(upload_emb, country_embs).flatten()
-            score -= float(np.max(existing_sims)) * 0.20
-
-        score = round(min(max(score, 0.0), 1.0), 3)
-        if score < 0.05:
-            continue
-
-        scored.append({
-            "country": country,
-            "region": profile.get("region", "Unknown"),
-            "need_score": score,
-            "regulatory_maturity": profile.get("regulatory_maturity", "unknown"),
-            "reasoning": _generate_reasoning(country, temp_policy, score),
-            "expected_benefits": _generate_benefits(temp_policy, country, score),
-            "already_has_sector": top_sector in profile.get("existing_sectors", []),
-            "priority_needs": profile.get("priority_needs", []),
-        })
-
-    top = sorted(scored, key=lambda x: -x["need_score"])[:top_n]
-
-    return {
-        "recommendations": top,
-        "similar_policies": similar,
-        "detected_sector": top_sector,
-        "ml_method": "Sentence Transformers (all-MiniLM-L6-v2) + Semantic Need-Gap Scoring"
-    }
 def get_recommendations_for_text(text: str, tags: list, title: str, top_n: int = 6) -> dict:
     _ensure_trained()
 

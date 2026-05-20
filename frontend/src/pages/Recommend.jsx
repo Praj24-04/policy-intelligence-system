@@ -233,6 +233,45 @@ export default function Recommend() {
                         }} />
                       </div>
 
+                      {/* 5-Factor Score Breakdown */}
+                      {rec.score_breakdown && (
+                        <div style={{
+                          marginBottom: 12,
+                          background: "rgba(255,255,255,0.015)",
+                          border: "1px dashed var(--border)",
+                          borderRadius: 8,
+                          padding: "10px 14px"
+                        }}>
+                          <div style={{ fontSize: 9, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 8, letterSpacing: "0.5px" }}>
+                            5-FACTOR NEED ANALYSIS BREAKDOWN
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+                            {[
+                              { label: "Sector Gap", val: rec.score_breakdown.sector_gap, weight: 0.35, color: "#f43f5e" },
+                              { label: "Maturity", val: rec.score_breakdown.regulatory_maturity, weight: 0.25, color: "#f59e0b" },
+                              { label: "Semantic", val: rec.score_breakdown.semantic_need, weight: 0.20, color: "#6366f1" },
+                              { label: "Regional", val: rec.score_breakdown.regional_pressure, weight: 0.12, color: "#10b981" },
+                              { label: "Economic", val: rec.score_breakdown.economic_tier, weight: 0.08, color: "#06b6d4" }
+                            ].map(item => {
+                              const pct = Math.min(100, Math.round((item.val / item.weight) * 100));
+                              return (
+                                <div key={item.label} style={{ display: "flex", flexDirection: "column" }}>
+                                  <span style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    {item.label}
+                                  </span>
+                                  <div style={{ height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 1.5, overflow: "hidden", marginBottom: 3 }}>
+                                    <div style={{ height: "100%", width: `${pct}%`, background: item.color, borderRadius: 1.5 }} />
+                                  </div>
+                                  <span style={{ fontSize: 10, fontFamily: "JetBrains Mono", color: "var(--text-main)", fontWeight: 600 }}>
+                                    {item.val.toFixed(3)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Reasoning */}
                       <div style={{ background: "var(--bg-hover)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>
                         <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 6 }}>
@@ -311,7 +350,7 @@ export default function Recommend() {
                           <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.country} · {p.sector}</div>
                         </div>
                         <div style={{ fontFamily: "JetBrains Mono", fontSize: 13, color: "var(--cyan)" }}>
-                          {Math.round(p.similarity * 100)}%
+                          {Math.round((p.approx_similarity ?? p.similarity ?? 0) * 100)}%
                         </div>
                       </div>
                     ))}

@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { fetchMLStatus } from "../services/api";
 import { 
   LayoutDashboard, ScrollText, GitCompare, 
   BarChart3, Sparkles, Upload, FileText, 
@@ -33,6 +35,13 @@ const categories = [
 
 export default function Sidebar({ user, onLogout }) {
   const { theme } = useTheme();
+  const [mlStatus, setMlStatus] = useState(null);
+
+  useEffect(() => {
+    fetchMLStatus().then(d => {
+      if (d) setMlStatus(d);
+    });
+  }, []);
 
   const userInitial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U";
 
@@ -160,6 +169,40 @@ export default function Sidebar({ user, onLogout }) {
           </div>
         </div>
       </nav>
+      {/* ML Status Indicator */}
+      {mlStatus && (
+        <div style={{
+          padding: "16px 20px",
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          background: "rgba(255,255,255,0.01)"
+        }}>
+          <div style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            backgroundColor: (() => {
+              if (!mlStatus.last_retrain_timestamp || mlStatus.last_retrain_timestamp === "Never") return "#94a3b8";
+              const lastTime = new Date(mlStatus.last_retrain_timestamp);
+              const diffHours = Math.abs(new Date() - lastTime) / (1000 * 60 * 60);
+              if (diffHours < 2) return "#10b981"; // Green
+              if (diffHours < 24) return "#f59e0b"; // Yellow
+              return "#94a3b8";
+            })(),
+            boxShadow: "0 0 8px currentColor"
+          }} />
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: 11, fontFamily: "JetBrains Mono", color: "var(--text-main)", fontWeight: 600 }}>
+              {mlStatus.total_indexed_in_chroma ?? mlStatus.total_policies ?? 0} POLICIES INDEXED
+            </span>
+            <span style={{ fontSize: 9, fontFamily: "JetBrains Mono", color: "var(--text-dim)", textTransform: "uppercase" }}>
+              Active search index
+            </span>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

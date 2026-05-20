@@ -284,7 +284,7 @@ html {
   display: inline-block;
   overflow: hidden;
   vertical-align: bottom;
-  height: 1.1em;
+  height: 1.2em;
   /* Matches Home.jsx h1 line-height */
 }
 
@@ -295,9 +295,10 @@ html {
 }
 
 .flip-list span {
-  height: 1.1em;
-  line-height: 1.1em;
+  height: 1.2em;
+  line-height: 1.2em;
   display: block;
+  padding-bottom: 0.1em; /* extra padding to prevent poking */
 }
 
 @keyframes flip-list {
@@ -337,11 +338,46 @@ html {
 .half-highlight::after {
   content: "";
   position: absolute;
-  bottom: 8%;
+  bottom: 10%;
   left: -2%;
   right: -2%;
-  height: 35%;
+  height: 20%;
   background-color: var(--cyan);
   z-index: -1;
   border-radius: 2px;
+}
+
+/* Gleam Button Animation */
+.btn-gleam {
+  position: relative;
+  overflow: hidden;
+}
+.btn-gleam::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: gleam 3s infinite;
+  transform: skewX(-20deg);
+}
+@keyframes gleam {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
+}
+
+/* Custom Footer Dark Theme override */
+.footer-dark {
+  background-color: #0C0A09;
+  color: #A8A29E;
+}
+.footer-dark a {
+  color: #A8A29E;
+  transition: color 0.2s;
+}
+.footer-dark a:hover {
+  color: #FFFFFF;
 }

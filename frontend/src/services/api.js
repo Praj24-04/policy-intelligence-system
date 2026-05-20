@@ -67,9 +67,10 @@ export const fetchSectorDist   = ()   => get("/analytics/sectors");
 export const fetchRegionDist   = ()   => get("/analytics/regions");
 export const fetchTrends       = ()   => get("/analytics/trends");
 export const fetchStatus       = ()   => get("/analytics/status");
-export const comparePolicies   = (id1, id2) => get(`/compare/?id1=${id1}&id2=${id2}`);
+export const comparePolicies   = (id1, id2) => get(`/compare/v2?id1=${id1}&id2=${id2}`);
 export const fetchRecommendations = (policyId, topN = 5) =>
-  get(`/recommend/${policyId}?top_n=${topN}`);
+  get(`/recommend/v2/${policyId}?top_n=${topN}`);
+export const fetchMLStatus = () => get("/ml/status");
 export const fetchClusters = () => get(`/recommend/clusters/summary`);
 
 export const submitFeedback = (policyId, country, helpful) =>

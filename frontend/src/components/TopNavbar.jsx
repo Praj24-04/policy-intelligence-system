@@ -11,7 +11,7 @@ export default function TopNavbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ["hero", "features", "shipped", "pricing"];
+      const sections = ["hero", "features", "shipped", "faq"];
       let current = "#hero";
       for (let s of sections) {
         const el = document.getElementById(s);
@@ -97,7 +97,7 @@ export default function TopNavbar() {
         <NavItem href="#hero" label="Home" />
         <NavItem href="#features" label="Features" />
         <NavItem href="#shipped" label="Live Policies" />
-        <NavItem href="#pricing" label="Pricing" />
+        <NavItem href="#faq" label="FAQ" />
       </nav>
 
       {/* Actions */}

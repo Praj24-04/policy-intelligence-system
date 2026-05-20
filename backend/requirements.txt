@@ -1,0 +1,27 @@
+# FastAPI and Web Server
+fastapi
+uvicorn
+python-multipart
+
+# Database
+psycopg2-binary
+pgvector
+
+# Security
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt
+
+# NLP and Machine Learning
+spacy
+scikit-learn
+sentence-transformers
+numpy
+
+# Pipeline Upgrade (Step 1 Additions)
+hdbscan
+umap-learn
+chromadb
+rank-bm25
+apscheduler
+pdfplumber
