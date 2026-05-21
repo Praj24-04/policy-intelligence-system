@@ -45,10 +45,10 @@ export default function Sidebar({ user, onLogout }) {
 
   const userInitial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U";
 
-  // Light mode exact matches from InternHack
-  const activeBg = theme === "light" ? "#1a1a1a" : "var(--cyan)";
-  const activeColor = theme === "light" ? "#fff" : "#000";
-  const activeBorder = theme === "light" ? "var(--cyan)" : "#000";
+  // Premium translucent green highlight and border accent
+  const activeBg = "rgba(163, 230, 53, 0.06)";
+  const activeColor = theme === "light" ? "#4d7c0f" : "var(--cyan)";
+  const activeBorder = "var(--cyan)";
 
   return (
     <aside style={{
@@ -115,11 +115,12 @@ export default function Sidebar({ user, onLogout }) {
             {cat.links.map(({ to, icon: Icon, label }) => (
               <NavLink key={to} to={to} end={to === "/"} style={({ isActive }) => ({
                 display: "flex", alignItems: "center", gap: 12,
-                padding: "10px 14px", borderRadius: 8, marginBottom: 2,
+                padding: isActive ? "10px 14px 10px 12px" : "10px 14px", 
+                borderRadius: 8, marginBottom: 2,
                 textDecoration: "none",
                 background: isActive ? activeBg : "transparent",
                 color: isActive ? activeColor : "var(--text-muted)",
-                borderLeft: isActive ? `4px solid ${activeBorder}` : "4px solid transparent",
+                borderLeft: isActive ? `3px solid ${activeBorder}` : "3px solid transparent",
                 fontSize: 14, fontWeight: isActive ? 600 : 500,
                 transition: "all 0.15s",
               })}>

@@ -1,96 +1,216 @@
 import { useNavigate } from "react-router-dom";
-import { MapPin, Calendar, ArrowUpRight } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 export default function PolicyCard({ policy, delay = 1, selectable, selected, onSelect }) {
   const nav = useNavigate();
 
-  const letter = policy.country && policy.country !== "Unknown" 
-    ? policy.country.charAt(0).toUpperCase() 
-    : "P";
+  // First letter of policy title
+  const letter = policy.title ? policy.title.charAt(0).toUpperCase() : "P";
+
+  // Accent and Selected states styling
+  const isSelected = selected;
+  const cardBorder = isSelected ? "1px solid #5c9e2e" : "1px solid #e8e8e8";
+  const cardBg = isSelected ? "rgba(92,158,46,0.04)" : "#ffffff";
+
+  // Standard tags array: extract up to 3 tags
+  const tagsToShow = policy.tags && Array.isArray(policy.tags) && policy.tags.length > 0
+    ? policy.tags.slice(0, 3)
+    : [policy.sector, policy.region].filter(Boolean);
 
   return (
-    <div className={`card fade-up fade-up-${delay}`}
+    <div 
+      className={`policy-card-custom fade-up fade-up-${delay}`}
       onClick={() => selectable ? onSelect?.(policy) : nav(`/policies/${policy.id}`)}
       style={{
-        padding: "20px 24px", cursor: "pointer",
-        borderColor: selected ? "var(--cyan)" : "var(--border)",
-        background: selected ? "rgba(34,211,238,0.05)" : "var(--bg-card)",
+        padding: "20px 20px 16px 20px",
+        cursor: "pointer",
+        borderRadius: "8px",
+        border: cardBorder,
+        background: cardBg,
         display: "flex",
         flexDirection: "column",
-        minHeight: "220px",
-      }}>
+        minHeight: "250px",
+        boxShadow: isSelected ? "0 2px 8px rgba(92,158,46,0.08)" : "none",
+        transition: "border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease",
+      }}
+    >
       
-      {/* Top section */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-        <div style={{ 
-          width: 36, height: 36, background: "var(--bg-hover)", borderRadius: 6, 
-          display: "flex", alignItems: "center", justifyContent: "center", 
-          fontWeight: 700, fontSize: 16, color: "var(--text-main)", flexShrink: 0,
-          border: "1px solid var(--border)"
-        }}>
-          {letter}
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ 
-            fontFamily: "Inter", fontWeight: 700, fontSize: 16, color: "var(--text-main)", 
-            lineHeight: 1.3, marginBottom: 4 
+      {/* ── ROW 1: Avatar + Title + Source badge ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        
+        {/* Left: Avatar square */}
+        <div style={{ display: "flex", gap: 10, flex: 1, alignItems: "flex-start" }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: "6px",
+            background: "#f5f5f5",
+            border: "1px solid #e8e8e8",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: "14px",
+            fontWeight: 600,
+            color: "#6b7280",
+            flexShrink: 0
           }}>
-            {policy.title}
+            {letter}
+          </div>
+
+          {/* Center-right: Title + Country */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
+            <div style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#0a0a0a",
+              lineHeight: 1.35,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden"
+            }}>
+              {policy.title}
+            </div>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "10px",
+              color: "#9ca3af",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase"
+            }}>
+              {policy.country || "UNKNOWN"}
+            </div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-          <div style={{ width: 6, height: 6, background: "var(--cyan)", borderRadius: 1 }} />
-          <span style={{ 
-            fontSize: 10, color: "var(--text-muted)", fontFamily: "JetBrains Mono", 
-            textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.5px"
+
+        {/* Far right: source badge */}
+        <div style={{ display: "flex", alignItems: "center", flexShrink: 0, marginTop: 3 }}>
+          <div style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: "#5c9e2e",
+            marginRight: 6
+          }} />
+          <span style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "9px",
+            color: "#5c9e2e",
+            letterSpacing: "0.08em",
+            fontWeight: 500,
+            textTransform: "uppercase"
           }}>
-            {policy.sector}
+            {policy.sector || "GENERAL"}
           </span>
         </div>
+
       </div>
 
-      {/* Middle section - truncated description */}
-      <div style={{ 
-        fontSize: 13, color: "var(--text-muted)", marginTop: 16, marginBottom: 20, 
-        display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", 
-        overflow: "hidden", lineHeight: 1.6
+      {/* ── ROW 2: Description ── */}
+      <div style={{
+        fontFamily: "'DM Sans', sans-serif",
+        fontSize: "13px",
+        color: "#6b7280",
+        lineHeight: 1.55,
+        marginTop: "12px",
+        display: "-webkit-box",
+        WebkitLineClamp: 3,
+        WebkitBoxOrient: "vertical",
+        overflow: "hidden",
+        fontWeight: 400
       }}>
         {policy.content || "No detailed description provided for this policy framework."}
       </div>
 
-      {/* Bottom section */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <div style={{ 
-            display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", 
-            background: "var(--bg-hover)", borderRadius: 4, fontSize: 10, 
-            color: "var(--text-muted)", fontFamily: "JetBrains Mono",
-            border: "1px solid var(--border)"
-          }}>
-            <MapPin size={10} /> {policy.country}
-          </div>
-          {policy.year && (
-             <div style={{ 
-               display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", 
-               background: "var(--bg-hover)", borderRadius: 4, fontSize: 10, 
-               color: "var(--text-muted)", fontFamily: "JetBrains Mono",
-               border: "1px solid var(--border)"
-             }}>
-               <Calendar size={10} /> {policy.year}
-             </div>
-          )}
-        </div>
+      {/* ── ROW 3: Location + Year pills ── */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: "14px" }}>
         
-        {!selectable && (
-          <div style={{ 
-            display: "flex", alignItems: "center", gap: 4, fontSize: 11, 
-            color: "var(--text-muted)", fontFamily: "JetBrains Mono", fontWeight: 600,
-            transition: "color 0.2s"
+        {/* Location pill */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          border: "1px solid #e8e8e8",
+          borderRadius: "20px",
+          padding: "3px 10px",
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "10px",
+          color: "#6b7280",
+          letterSpacing: "0.04em",
+          textTransform: "uppercase"
+        }}>
+          <span style={{
+            width: 4,
+            height: 4,
+            borderRadius: "50%",
+            background: "#9ca3af",
+            display: "inline-block"
+          }} />
+          {policy.country || "GLOBAL"}
+        </div>
+
+        {/* Year pill */}
+        {policy.year && (
+          <div style={{
+            border: "1px solid #e8e8e8",
+            borderRadius: "20px",
+            padding: "3px 10px",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "10px",
+            color: "#6b7280",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase"
           }}>
-            VIEW POLICY <ArrowUpRight size={14} />
+            {policy.year}
           </div>
         )}
+
       </div>
+
+      {/* ── ROW 4: Tags ── */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
+        {tagsToShow.map((tag, idx) => (
+          <div key={idx} className="policy-card-tag" style={{
+            borderRadius: "4px",
+            padding: "3px 8px",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "10px",
+            letterSpacing: "0.05em",
+            textTransform: "uppercase"
+          }}>
+            {tag}
+          </div>
+        ))}
+      </div>
+
+      {/* ── ROW 5: VIEW POLICY link ── */}
+      {!selectable && (
+        <div style={{
+          marginTop: "16px",
+          borderTop: "1px solid #f0f0f0",
+          paddingTop: "12px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <span className="view-policy-text" style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "11px",
+            color: "#9ca3af",
+            letterSpacing: "0.08em",
+            transition: "color 0.15s ease"
+          }}>
+            VIEW POLICY
+          </span>
+          <ExternalLink className="view-policy-arrow" size={11} style={{
+            color: "#9ca3af",
+            transition: "color 0.15s ease"
+          }} />
+        </div>
+      )}
+
     </div>
   );
 }

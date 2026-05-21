@@ -199,7 +199,18 @@ export default function Compare() {
   };
 
   return (
-    <div style={{ padding: "28px 32px" }}>
+    <div style={{
+      flex: 1,
+      overflowY: "auto",
+      background: "#ffffff",
+      minHeight: "100vh"
+    }}>
+      <div style={{
+        maxWidth: "1200px",
+        margin: "0 auto",
+        padding: "32px 40px",
+        width: "100%"
+      }}>
       <div className="fade-up" style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
@@ -539,7 +550,7 @@ export default function Compare() {
           </div>
 
           <div style={{ maxHeight: 600, overflowY: "auto", paddingRight: 4 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
               {policies.map((p, i) => (
                 <PolicyCard
                   key={p.id} policy={p} delay={(i % 5) + 1}
@@ -551,6 +562,7 @@ export default function Compare() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

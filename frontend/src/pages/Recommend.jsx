@@ -48,8 +48,18 @@ export default function Recommend() {
     : policies;
 
   return (
-    <div style={{ padding: "28px 32px" }}>
-
+    <div style={{
+      flex: 1,
+      overflowY: "auto",
+      background: "#ffffff",
+      minHeight: "100vh"
+    }}>
+      <div style={{
+        maxWidth: "1100px",
+        margin: "0 auto",
+        padding: "32px 40px",
+        width: "100%"
+      }}>
       {/* Header */}
       <div className="fade-up" style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -361,6 +371,7 @@ export default function Recommend() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

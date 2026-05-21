@@ -29,12 +29,22 @@ async def startup():
     from app.services.recommender import _load_and_train
     threading.Thread(target=_load_and_train, daemon=True).start()
 
+    # Start live fetch scheduler (EUR-Lex + CISA refresh every 24 hours)
+    from app.services.scheduler import start_scheduler as start_fetch_scheduler
+    start_fetch_scheduler()
+
     # Start new ML scheduler
-    from app.ml.scheduler import start_scheduler, embed_new_policies
-    scheduler = start_scheduler()
-    app.state.scheduler = scheduler
+    from app.ml.scheduler import start_scheduler as start_ml_scheduler, embed_new_policies
+    ml_scheduler = start_ml_scheduler()
+    app.state.scheduler = ml_scheduler
+
+    # Pre-warm/fit ML clusterer in memory on startup in a background thread
+    from app.ml.clusterer import load_and_fit
+    threading.Thread(target=load_and_fit, daemon=True).start()
+
 
     # Run check for unembedded policies immediately
+
     try:
         await embed_new_policies()
     except Exception as e:
@@ -45,10 +55,15 @@ async def startup():
 
 @app.on_event("shutdown")
 def shutdown():
+    # Stop live fetch scheduler
+    from app.services.scheduler import stop_scheduler as stop_fetch_scheduler
+    stop_fetch_scheduler()
+
     # Stop new ML scheduler
     if hasattr(app.state, "scheduler"):
-        from app.ml.scheduler import stop_scheduler
-        stop_scheduler(app.state.scheduler)
+        from app.ml.scheduler import stop_scheduler as stop_ml_scheduler
+        stop_ml_scheduler(app.state.scheduler)
+
 
 app.include_router(auth.router,      prefix="/api/auth",      tags=["Auth"])
 app.include_router(policies.router,  prefix="/api/policies",  tags=["Policies"])

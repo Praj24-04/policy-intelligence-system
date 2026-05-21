@@ -4,7 +4,7 @@ import StatCard from "../components/StatCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, CartesianGrid
+  PieChart, Pie, Cell, LineChart, Line, CartesianGrid, AreaChart, Area
 } from "recharts";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
@@ -93,8 +93,19 @@ export default function Dashboard() {
   if (loading) return <LoadingSpinner label="Loading intelligence data..." />;
 
   return (
-    <div style={{ padding: "28px 32px" }}>
-      {/* Header */}
+    <div style={{
+      flex: 1,
+      overflowY: "auto",
+      background: "#ffffff",
+      minHeight: "100vh"
+    }}>
+      <div style={{
+        maxWidth: "1280px",
+        margin: "0 auto",
+        padding: "32px 40px",
+        width: "100%"
+      }}>
+        {/* Header */}
       <div className="fade-up" style={{ marginBottom: 32 }}>
         <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
           <span style={{ color: "var(--cyan)", marginRight: 8 }}>■</span> WORK / OVERVIEW
@@ -116,111 +127,119 @@ export default function Dashboard() {
       </div>
 
       {/* Hybrid Intelligence Pipeline Banner */}
-      <div className="card fade-up" style={{
-        padding: "18px 22px", marginBottom: 16,
-        borderColor: "rgba(34,211,238,0.2)",
+      <div className="card fade-up pipeline-banner-themed" style={{
+        padding: "20px 24px", marginBottom: 24,
+        borderColor: "rgba(163, 230, 53, 0.12)",
+        background: "rgba(163, 230, 53, 0.02)",
+        borderRadius: "12px",
+        borderTop: "1.5px solid var(--cyan)"
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 14 }}>
           <div>
             <div style={{
-              fontSize: 11, color: "var(--cyan)",
-              fontFamily: "JetBrains Mono", marginBottom: 4,
-              letterSpacing: "0.5px"
+              fontSize: "10px", color: "var(--stat-label)",
+              fontFamily: "'JetBrains Mono', monospace", marginBottom: 4,
+              letterSpacing: "0.08em", fontWeight: 600
             }}>
               HYBRID INTELLIGENCE PIPELINE
             </div>
-            <div style={{ fontSize: 13, color: "var(--text-main)", marginBottom: 2 }}>
+            <div style={{ fontSize: 13, color: "var(--text-main)", fontWeight: 500 }}>
               15 Curated Foundational Laws + {fetchStatus?.live_fetched || 0} Live API Policies · Auto-refreshes every 24h
             </div>
           </div>
-          <button onClick={triggerFetch} disabled={fetching} style={{
-            padding: "8px 18px", borderRadius: 8,
-            background: fetching ? "var(--bg-hover)" : "rgba(34,211,238,0.1)",
-            border: `1px solid ${fetching ? "var(--border)" : "rgba(34,211,238,0.3)"}`,
-            color: fetching ? "var(--text-muted)" : "var(--cyan)",
-            fontSize: 12, cursor: fetching ? "not-allowed" : "pointer",
-            fontFamily: "JetBrains Mono", transition: "all 0.2s",
-            flexShrink: 0,
-          }}>
-            {fetching ? "⟳ Fetching..." : "⟳ Fetch Live APIs"}
+          
+          {/* Issue 7: High-contrast CTA Fetch Button */}
+          <button 
+            onClick={triggerFetch} 
+            disabled={fetching} 
+            className="btn-fetch-themed"
+            style={{
+              padding: "8px 18px", 
+              borderRadius: "4px",
+              background: "var(--cyan)",
+              border: "none",
+              color: "#0f1a00",
+              fontSize: "12px", 
+              cursor: fetching ? "not-allowed" : "pointer",
+              fontFamily: "'JetBrains Mono', monospace", 
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "0 2px 8px rgba(163, 230, 53, 0.2)",
+              transition: "all 0.2s"
+            }}
+          >
+            <span className={fetching ? "spin-icon" : ""} style={{ display: "inline-block" }}>
+              ↻
+            </span>
+            {fetching ? "FETCHING..." : "FETCH LIVE"}
           </button>
         </div>
 
-        {/* Per-source breakdown pills — all live */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {/* Foundational Standards */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "5px 14px", borderRadius: 6,
-            background: "var(--bg-hover)", border: "1px solid var(--border)",
-          }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6b7280" }} />
-            <span style={{ fontSize: 10, color: "#4b5563", fontFamily: "JetBrains Mono" }}>CURATED</span>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Foundational Core Standards</span>
-            <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600, fontFamily: "JetBrains Mono" }}>
-              15
-            </span>
+        {/* Issue 2: Pill-shaped live indicators */}
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", marginTop: "12px" }}>
+          {/* Curated core standards */}
+          <div className="pipeline-pill-themed curated">
+            <span className="dot static-dot" />
+            <span className="label">Curated · 15</span>
           </div>
 
           {/* EUR-Lex */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "5px 14px", borderRadius: 6,
-            background: "rgba(183, 255, 0, 0.06)", border: "1px solid rgba(183, 255, 0, 0.15)",
-          }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cyan)", animation: "pulse 2s infinite" }} />
-            <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono" }}>LIVE</span>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>EUR-Lex SPARQL</span>
-            <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600, fontFamily: "JetBrains Mono" }}>
-              {fetchStatus?.sources?.eurlex?.count || 0}
-            </span>
+          <div className="pipeline-pill-themed live">
+            <span className="dot pulsing-dot" />
+            <span className="label">EUR-Lex · {fetchStatus?.sources?.eurlex?.count || 0}</span>
           </div>
 
           {/* CISA KEV */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "5px 14px", borderRadius: 6,
-            background: "rgba(183, 255, 0, 0.06)", border: "1px solid rgba(183, 255, 0, 0.15)",
-          }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cyan)", animation: "pulse 2s infinite" }} />
-            <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono" }}>LIVE</span>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>CISA KEV</span>
-            <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600, fontFamily: "JetBrains Mono" }}>
-              {fetchStatus?.sources?.cisa?.count || 0}
-            </span>
+          <div className="pipeline-pill-themed live">
+            <span className="dot pulsing-dot" />
+            <span className="label">CISA KEV · {fetchStatus?.sources?.cisa?.count || 0}</span>
           </div>
 
           {/* Federal Register */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "5px 14px", borderRadius: 6,
-            background: "rgba(183, 255, 0, 0.06)", border: "1px solid rgba(183, 255, 0, 0.15)",
-          }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cyan)", animation: "pulse 2s infinite" }} />
-            <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono" }}>LIVE</span>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>US Federal Register</span>
-            <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600, fontFamily: "JetBrains Mono" }}>
-              {fetchStatus?.sources?.fedreg?.count || 0}
-            </span>
+          <div className="pipeline-pill-themed live">
+            <span className="dot pulsing-dot" />
+            <span className="label">US Fed Register · {fetchStatus?.sources?.fedreg?.count || 0}</span>
           </div>
-        </div>
 
-        {/* Last fetch timestamp */}
-        {fetchStatus?.last_fetch && (
-          <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginTop: 10 }}>
-            Last fetch: {new Date(fetchStatus.last_fetch).toLocaleString()}
-          </div>
-        )}
+          {/* Separation line & Fetch Timestamp */}
+          {fetchStatus?.last_fetch && (
+            <div style={{ 
+              marginLeft: "auto",
+              fontSize: "10px", 
+              color: "var(--stat-sub)", 
+              fontFamily: "'JetBrains Mono', monospace" 
+            }}>
+              Last fetch: {new Date(fetchStatus.last_fetch).toLocaleDateString()} {new Date(fetchStatus.last_fetch).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Charts Row 1 */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-        {/* Sector Pie */}
-        <div className="card fade-up fade-up-2" style={{ padding: "20px 24px" }}>
-          <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
-            Sector Distribution
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
+        {/* Sector Distribution */}
+        <div className="fade-up fade-up-2 chart-card-themed">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+            <div>
+              <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 15, color: "var(--stat-label)", letterSpacing: "-0.3px" }}>
+                Sector Distribution
+              </div>
+              <div style={{ fontSize: 11, color: "var(--stat-sub)", marginTop: 2, fontWeight: 500 }}>
+                Policy breakdown by domain
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <span style={{ background: "rgba(163, 230, 53, 0.1)", border: "1px solid rgba(163, 230, 53, 0.2)", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", color: "var(--stat-label)", fontFamily: "JetBrains Mono", fontWeight: 600 }}>
+                {sectors.length} sectors
+              </span>
+              <span style={{ background: "rgba(125, 211, 252, 0.1)", border: "1px solid rgba(125, 211, 252, 0.2)", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", color: "#38bdf8", fontFamily: "JetBrains Mono", fontWeight: 600 }}>
+                {overview?.total_policies || 0} total
+              </span>
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Policy breakdown by domain</div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <ResponsiveContainer width="50%" height={160}>
               <PieChart>
@@ -244,28 +263,27 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* World Map */}
-        <div className="card fade-up fade-up-3" style={{ padding: "20px 24px", position: "relative" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+        {/* Global Policy Map */}
+        <div className="fade-up fade-up-3 chart-card-themed" style={{ position: "relative" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
             <div>
-              <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
+              <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 15, color: "var(--stat-label)", letterSpacing: "-0.3px" }}>
                 Global Policy Map
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Policies mapped by jurisdiction</div>
+              <div style={{ fontSize: 11, color: "var(--stat-sub)", marginTop: 2, fontWeight: 500 }}>
+                Policies mapped by jurisdiction
+              </div>
             </div>
-            
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 6 }}>
               {allCountries["International"] > 0 && (
-                <div style={{ background: "rgba(183, 255, 0, 0.1)", border: "1px solid rgba(183, 255, 0, 0.2)", padding: "4px 10px", borderRadius: 6 }}>
-                  <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono", marginRight: 6 }}>INTL</span>
-                  <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600 }}>{allCountries["International"]}</span>
-                </div>
+                <span style={{ background: "rgba(163, 230, 53, 0.1)", border: "1px solid rgba(163, 230, 53, 0.2)", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", color: "var(--stat-label)", fontFamily: "JetBrains Mono", fontWeight: 600 }}>
+                  INTL · {allCountries["International"]}
+                </span>
               )}
               {allCountries["European Union"] > 0 && (
-                <div style={{ background: "rgba(183, 255, 0, 0.1)", border: "1px solid rgba(183, 255, 0, 0.2)", padding: "4px 10px", borderRadius: 6 }}>
-                  <span style={{ fontSize: 10, color: "#4d7c0f", fontFamily: "JetBrains Mono", marginRight: 6 }}>EU</span>
-                  <span style={{ fontSize: 12, color: "var(--text-main)", fontWeight: 600 }}>{allCountries["European Union"]}</span>
-                </div>
+                <span style={{ background: "rgba(163, 230, 53, 0.1)", border: "1px solid rgba(163, 230, 53, 0.2)", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", color: "var(--stat-label)", fontFamily: "JetBrains Mono", fontWeight: 600 }}>
+                  EU · {allCountries["European Union"]}
+                </span>
               )}
             </div>
           </div>
@@ -290,9 +308,9 @@ export default function Dashboard() {
                         stroke="#f8fafc"
                         strokeWidth={0.5}
                         style={{
-                          default: { outline: "none" },
-                          hover: { fill: policyCount > 0 ? "#65a30d" : "#e5e7eb", outline: "none", cursor: "pointer" },
-                          pressed: { outline: "none" },
+                           default: { outline: "none" },
+                           hover: { fill: policyCount > 0 ? "#65a30d" : "#e5e7eb", outline: "none", cursor: "pointer" },
+                           pressed: { outline: "none" },
                         }}
                         onMouseEnter={() => {
                           setHoveredRegion({ name: countryName, count: policyCount });
@@ -328,30 +346,58 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row 2 */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {/* Year Trend */}
-        <div className="card fade-up fade-up-4" style={{ padding: "20px 24px" }}>
-          <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
-            Policy Adoption Timeline
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+        {/* Year Trend with subtle Area gradient */}
+        <div className="fade-up fade-up-4 chart-card-themed">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+            <div>
+              <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 15, color: "var(--stat-label)", letterSpacing: "-0.3px" }}>
+                Policy Adoption Timeline
+              </div>
+              <div style={{ fontSize: 11, color: "var(--stat-sub)", marginTop: 2, fontWeight: 500 }}>
+                Policies enacted by year
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <span style={{ background: "rgba(163, 230, 53, 0.1)", border: "1px solid rgba(163, 230, 53, 0.2)", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", color: "var(--stat-label)", fontFamily: "JetBrains Mono", fontWeight: 600 }}>
+                Adoption trend
+              </span>
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Policies enacted by year</div>
           <ResponsiveContainer width="100%" height={150}>
-            <LineChart data={trends}>
-              <CartesianGrid stroke="#1e2a3a" strokeDasharray="3 3" />
+            <AreaChart data={trends}>
+              <defs>
+                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--cyan)" stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor="var(--cyan)" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="rgba(163, 230, 53, 0.08)" strokeDasharray="3 3" strokeWidth={0.5} />
               <XAxis dataKey="year" tick={{ fill: "#475569", fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#475569", fontSize: 10 }} axisLine={false} tickLine={false} width={20} />
               <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="count" stroke="var(--cyan)" strokeWidth={2} dot={{ fill: "var(--cyan)", r: 3 }} />
-            </LineChart>
+              <Area type="monotone" dataKey="count" stroke="var(--cyan)" strokeWidth={2} fillOpacity={1} fill="url(#areaGradient)" dot={{ fill: "var(--cyan)", r: 3 }} />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Top Countries */}
-        <div className="card fade-up fade-up-5" style={{ padding: "20px 24px" }}>
-          <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
-            Top Jurisdictions by NER
+        {/* Top Countries with premium rounded bars */}
+        <div className="fade-up fade-up-5 chart-card-themed">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+            <div>
+              <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 15, color: "var(--stat-label)", letterSpacing: "-0.3px" }}>
+                Top Jurisdictions by NER
+              </div>
+              <div style={{ fontSize: 11, color: "var(--stat-sub)", marginTop: 2, fontWeight: 500 }}>
+                Countries extracted via spaCy NLP
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <span style={{ background: "rgba(163, 230, 53, 0.1)", border: "1px solid rgba(163, 230, 53, 0.2)", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", color: "var(--stat-label)", fontFamily: "JetBrains Mono", fontWeight: 600 }}>
+                NER Extraction
+              </span>
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Countries extracted via spaCy NLP</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {countries.map((c, i) => {
               const max = countries[0]?.value || 1;
@@ -361,8 +407,14 @@ export default function Dashboard() {
                   <div style={{ width: 60, fontSize: 11, color: "var(--text-muted)", fontFamily: "JetBrains Mono", flexShrink: 0 }}>
                     {c.name}
                   </div>
-                  <div style={{ flex: 1, height: 4, background: "var(--border)", borderRadius: 2 }}>
-                    <div style={{ width: `${pct}%`, height: "100%", background: "var(--cyan)", borderRadius: 2, transition: "width 0.6s ease" }} />
+                  <div style={{ flex: 1, height: 10, background: "var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ 
+                      width: `${pct}%`, 
+                      height: "100%", 
+                      background: "linear-gradient(90deg, var(--cyan) 0%, #7db800 100%)", 
+                      borderRadius: 10, 
+                      transition: "width 0.6s ease" 
+                    }} />
                   </div>
                   <div style={{ width: 20, fontSize: 11, color: "var(--text-main)", fontFamily: "JetBrains Mono", textAlign: "right" }}>
                     {c.value}
@@ -372,6 +424,7 @@ export default function Dashboard() {
             })}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

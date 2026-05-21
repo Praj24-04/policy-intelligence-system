@@ -185,6 +185,28 @@ def run_clustering_job() -> dict:
     return summary
 
 
+def load_and_fit() -> dict:
+    """
+    Loads all embeddings from PostgreSQL that already have cluster_ids assigned,
+    runs _clusterer.fit() on them to restore the trained state in memory without
+    updating the database.
+    """
+    print("[INFO] Restoring clusterer state from database...")
+    policies = get_all_embeddings()
+    if not policies:
+        print("[WARN] No embedded policies found. Cannot load and fit.")
+        return {}
+
+    embeddings = np.array([p["embedding"] for p in policies], dtype=np.float32)
+    policy_ids = [p["id"] for p in policies]
+
+    # Fit using our singleton instance
+    _clusterer.fit(embeddings, policy_ids)
+    summary = _clusterer.get_cluster_summary()
+    return summary
+
+
+
 # Module-level singleton
 _clusterer = PolicyClusterer()
 

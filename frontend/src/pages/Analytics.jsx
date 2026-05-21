@@ -48,7 +48,18 @@ export default function Analytics() {
   const TTStyle = { background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, color: "var(--text-main)" };
 
   return (
-    <div style={{ padding: "28px 32px" }}>
+    <div style={{
+      flex: 1,
+      overflowY: "auto",
+      background: "#ffffff",
+      minHeight: "100vh"
+    }}>
+      <div style={{
+        maxWidth: "1280px",
+        margin: "0 auto",
+        padding: "32px 40px",
+        width: "100%"
+      }}>
       {/* Header */}
       <div className="fade-up" style={{ marginBottom: 32 }}>
         <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
@@ -221,6 +232,7 @@ export default function Analytics() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

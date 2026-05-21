@@ -5,40 +5,50 @@
 /* ── Light Mode (default) ── */
 :root,
 [data-theme="light"] {
-  --bg-deep: #FFFFFF;
-  --bg-base: #FFFFFF;
-  --bg-card: #F5F5F4;
-  --bg-hover: #E7E5E4;
-  --border: #D6D3D1;
-  --border-lit: #A8A29E;
-  --cyan: #A3E635;
-  /* Lime green */
+  --bg-deep: #FAFAFA;    /* Soft off-white page background */
+  --bg-base: #FFFFFF;    /* Crisp white base for sidebars/headers */
+  --bg-card: #FFFFFF;    /* Crisp white card base */
+  --bg-hover: #F4F4F5;   /* Clean light hover grey */
+  --border: #E4E4E7;     /* Ultra-thin neutral border */
+  --border-lit: #D4D4D8; /* Slightly darker subtle border */
+  --cyan: #A3E635;       /* Dynamic lime green */
   --cyan-dim: #BEF264;
   --amber: #F59E0B;
   --green: #A3E635;
   --red: #F43F5E;
-  --text-main: #0C0A09;
-  --text-muted: #57534E;
-  --text-dim: #A8A29E;
+  --text-main: #18181B;   /* Neutral-900 rich dark text */
+  --text-muted: #71717A;  /* Neutral-600 elegant muted text */
+  --text-dim: #A1A1AA;    /* Neutral-400 dim text */
+  
+  /* Stat Card Variables */
+  --stat-bg: rgba(163, 230, 53, 0.04);
+  --stat-border: rgba(163, 230, 53, 0.12);
+  --stat-label: #5c9e2e;
+  --stat-sub: #4b6b23;
 }
 
 /* ── Dark Mode ── */
 [data-theme="dark"] {
-  --bg-deep: #0C0A09;
-  --bg-base: #0C0A09;
-  --bg-card: #1C1917;
-  --bg-hover: #292524;
-  --border: #292524;
-  --border-lit: #44403C;
-  --cyan: #A3E635;
-  /* Lime green */
+  --bg-deep: #09090B;    /* Zinc-950 rich deep page background */
+  --bg-base: #09090B;    /* Zinc-950 base */
+  --bg-card: #09090B;    /* Rich black card base */
+  --bg-hover: #18181B;   /* Zinc-900 clean dark hover */
+  --border: #18181B;     /* Zinc-900 clean dark border */
+  --border-lit: #27272A; /* Zinc-800 subtle dark border */
+  --cyan: #A3E635;       /* Dynamic lime green */
   --cyan-dim: #BEF264;
   --amber: #F59E0B;
   --green: #A3E635;
   --red: #F43F5E;
-  --text-main: #FFFFFF;
-  --text-muted: #A8A29E;
-  --text-dim: #57534E;
+  --text-main: #FAFAFA;  /* Zinc-50 bright clean text */
+  --text-muted: #A1A1AA; /* Zinc-400 elegant muted text */
+  --text-dim: #71717A;   /* Zinc-600 dim text */
+  
+  /* Stat Card Variables */
+  --stat-bg: rgba(92, 158, 46, 0.08);
+  --stat-border: rgba(92, 158, 46, 0.25);
+  --stat-label: #bef264;
+  --stat-sub: #a3e635;
 }
 
 * {
@@ -96,12 +106,12 @@ h4 {
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 8px;
   transition: border-color 0.2s, transform 0.2s, background 0.3s;
 }
 
 .card:hover {
-  border-color: var(--border-lit);
+  border-color: var(--text-main) !important;
 }
 
 .pill-ai {
@@ -380,4 +390,221 @@ html {
 }
 .footer-dark a:hover {
   color: #FFFFFF;
+}
+
+/* ── Custom Half Highlight Style ── */
+.half-highlight-custom {
+  position: relative;
+  display: inline-block;
+  z-index: 1;
+}
+.half-highlight-custom::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 12px;
+  background: #a3e635; /* exact vibrant lime-green */
+  z-index: -1;
+  opacity: 0.95;
+  border-radius: 1px;
+}
+[data-theme="dark"] .half-highlight-custom::after {
+  background: #5c9e2e !important; /* dark theme solid green highlight */
+}
+
+/* ── Custom InternHack PolicyCard Styles ── */
+.policy-card-custom {
+  background: #ffffff !important;
+  border: 1px solid #e8e8e8 !important;
+  border-radius: 8px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+}
+
+[data-theme="dark"] .policy-card-custom {
+  background: #09090b !important;
+  border: 1px solid #18181b !important;
+}
+
+.policy-card-custom:hover {
+  border-color: var(--text-main) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="dark"] .policy-card-custom:hover {
+  border-color: var(--text-main) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+.policy-card-custom:hover .view-policy-arrow {
+  color: #5c9e2e !important;
+}
+
+.policy-card-custom:hover .view-policy-text {
+  color: #71717a !important;
+}
+
+/* ── Policy Tags Styles ── */
+.policy-card-tag {
+  background: #f5f5f5;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .policy-card-tag {
+  background: #18181b;
+  color: #a1a1aa;
+}
+
+/* Translucent green tags for database page (policies-grid-custom) */
+.policies-grid-custom .policy-card-tag {
+  background: rgba(163, 230, 53, 0.15) !important;
+  color: #4d7c0f !important;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .policies-grid-custom .policy-card-tag {
+  background: rgba(92, 158, 46, 0.2) !important;
+  color: #bef264 !important;
+}
+
+/* ── Search Input Custom ── */
+.search-input-custom {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #0a0a0a;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.search-input-custom:focus {
+  border-color: #5c9e2e !important;
+  box-shadow: 0 0 0 3px rgba(92, 158, 46, 0.08) !important;
+}
+[data-theme="dark"] .search-input-custom {
+  color: #fafafa !important;
+}
+
+/* ── Select Dropdowns Custom ── */
+.select-custom {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  height: 40px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #6b7280;
+  padding: 0 12px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.select-custom:focus {
+  border-color: #5c9e2e !important;
+}
+[data-theme="dark"] .select-custom {
+  background: #09090b !important;
+  border: 1px solid #18181b !important;
+  color: #fafafa !important;
+}
+
+/* ── Responsive Grid ── */
+.policies-grid-custom {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+@media (max-width: 1100px) {
+  .policies-grid-custom {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .policies-grid-custom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── Theme-aware Chart Cards ── */
+.chart-card-themed {
+  background: var(--bg-card);
+  border-top: 1.5px solid var(--cyan) !important;
+  border-left: 1px solid var(--stat-border) !important;
+  border-right: 1px solid var(--stat-border) !important;
+  border-bottom: 1px solid var(--stat-border) !important;
+  border-radius: 12px !important;
+  padding: 20px 24px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.01);
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.chart-card-themed:hover {
+  border-color: var(--text-main) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="dark"] .chart-card-themed:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ── Pipeline Pills and Fetch Button ── */
+.pipeline-pill-themed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.pipeline-pill-themed.curated {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.pipeline-pill-themed.curated .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.pipeline-pill-themed.live {
+  background: rgba(163, 230, 53, 0.05);
+  border: 1px solid rgba(163, 230, 53, 0.20);
+  color: var(--stat-label);
+}
+.pipeline-pill-themed.live .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+[data-theme="dark"] .pipeline-pill-themed.live {
+  background: rgba(92, 158, 46, 0.15);
+  border: 1px solid rgba(92, 158, 46, 0.30);
+  color: #bef264;
+}
+
+.btn-fetch-themed:hover {
+  background: var(--cyan-dim) !important;
+  box-shadow: 0 4px 12px rgba(163, 230, 53, 0.3) !important;
+  transform: translateY(-1.5px);
+}
+.btn-fetch-themed:active {
+  transform: translateY(0);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin-icon {
+  animation: spin 1.2s linear infinite;
 }
