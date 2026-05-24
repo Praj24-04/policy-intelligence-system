@@ -1,13 +1,18 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from app.services.pdf_service import extract_text_from_pdf, extract_policy_metadata
 from app.services.nlp_service import extract_countries
 from app.services.recommender import get_recommendations_for_text
+from app.auth import get_current_user
+from app.database import get_connection
 import json
 
 router = APIRouter()
 
 @router.post("/pdf")
-async def upload_policy_pdf(file: UploadFile = File(...)):
+async def upload_policy_pdf(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
     # Validate file type
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
@@ -36,6 +41,32 @@ async def upload_policy_pdf(file: UploadFile = File(...)):
         tags=metadata["tags"],
         title=metadata["title"]
     )
+    
+    # Save transaction to database history for profile audit
+    conn = get_connection()
+    try:
+        conn.execute(
+            """
+            INSERT INTO user_uploads (user_id, filename, title, tags, word_count, result_json)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (
+                current_user["id"],
+                file.filename,
+                metadata["title"],
+                json.dumps(metadata["tags"]),
+                len(text.split()),
+                json.dumps({
+                    "year": metadata["year"],
+                    "extracted_countries": extracted_countries,
+                })
+            )
+        )
+        conn.commit()
+    except Exception as db_err:
+        print(f"Error logging upload history: {db_err}")
+    finally:
+        conn.close()
     
     return {
         "filename": file.filename,

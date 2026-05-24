@@ -72,16 +72,38 @@ def get_user_by_id(user_id: int) -> dict | None:
 
 # ── Dependency ─────────────────────────────────────────────────────────────
 def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+    debug_log_path = r"D:\VIT\PROJECTS\POLICY_PROJECT\backend\auth_debug.log"
     try:
+        with open(debug_log_path, "a", encoding="utf-8") as f:
+            f.write(f"--- get_current_user called at {datetime.utcnow()} ---\n")
+            f.write(f"Received Token: '{token}'\n")
+            
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        with open(debug_log_path, "a", encoding="utf-8") as f:
+            f.write(f"Decoded Payload: {payload}\n")
+            
         if payload.get("type") != "access":
+            with open(debug_log_path, "a", encoding="utf-8") as f:
+                f.write("Error: Invalid token type\n")
             raise HTTPException(status_code=401, detail="Invalid token type")
+            
         user_id = payload.get("sub")
         if not user_id:
+            with open(debug_log_path, "a", encoding="utf-8") as f:
+                f.write("Error: Invalid token sub\n")
             raise HTTPException(status_code=401, detail="Invalid token")
+            
         user = get_user_by_id(int(user_id))
         if not user:
+            with open(debug_log_path, "a", encoding="utf-8") as f:
+                f.write(f"Error: User not found for id {user_id}\n")
             raise HTTPException(status_code=401, detail="User not found")
+            
+        with open(debug_log_path, "a", encoding="utf-8") as f:
+            f.write("Token verification successful!\n\n")
         return user
-    except JWTError:
+    except JWTError as e:
+        with open(debug_log_path, "a", encoding="utf-8") as f:
+            f.write(f"JWTError raised: {str(e)}\n\n")
         raise HTTPException(status_code=401, detail="Invalid or expired token")

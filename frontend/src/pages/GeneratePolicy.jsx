@@ -1,401 +1,964 @@
-import { useState } from "react";
-import { fetchPolicies } from "../services/api";
+import { useState, useEffect } from "react";
 import LoadingSpinner from "../components/LoadingSpinner";
-import SectorBadge from "../components/SectorBadge";
-import { FileText, Sparkles, Download, ChevronRight } from "lucide-react";
+import { Sparkles, FileDown, RotateCcw, AlertTriangle } from "lucide-react";
 
-const COUNTRIES = [
-    "India", "Indonesia", "Nigeria", "Kenya", "Brazil", "Mexico",
-    "Argentina", "Saudi Arabia", "United Arab Emirates", "South Africa",
-    "South Korea", "Japan", "Australia", "Canada", "United Kingdom",
-    "Germany", "France", "Singapore", "United States", "European Union"
+const FALLBACK_COUNTRIES = [
+  "India", "United States", "European Union", "Brazil", "China", 
+  "United Kingdom", "Singapore", "Australia", "Canada", "Japan", 
+  "South Korea", "Germany", "France"
 ];
 
-const SECTORS = [
-    "AI Governance", "Cybersecurity", "Data Privacy",
-    "Healthcare AI", "Financial Regulation",
-    "POSH Policies", "ESG Policies", "IoT and Robotics"
+const FALLBACK_SECTORS = [
+  "AI Governance", "Cybersecurity", "Data Privacy",
+  "Healthcare AI", "Financial Regulation",
+  "POSH Policies", "ESG Policies", "IoT and Robotics"
+];
+
+const LOADING_MESSAGES = [
+  "Analyzing regulatory landscape...",
+  "Querying reference policies...",
+  "Identifying framework gaps...",
+  "Drafting policy sections...",
+  "Structuring document...",
+  "Finalizing framework..."
 ];
 
 export default function GeneratePolicy() {
-    const [country, setCountry] = useState("");
-    const [sector, setSector] = useState("");
-    const [result, setResult] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+  const [country, setCountry] = useState("");
+  const [sector, setSector] = useState("");
+  const [focusAreas, setFocusAreas] = useState("");
+  const [countries, setCountries] = useState([]);
+  const [sectors, setSectors] = useState([]);
+  const [contextPreview, setContextPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
-    const handleGenerate = async () => {
-        if (!country || !sector) return;
-        setLoading(true);
-        setError(null);
 
-        try {
-            const res = await fetch("http://localhost:8000/api/generate/policy-template", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ country, sector })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Generation failed");
-            setResult(data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
+  // 1. Fetch available countries and sectors on mount
+  useEffect(() => {
+    async function loadMeta() {
+      try {
+        const [cRes, sRes] = await Promise.all([
+          fetch("http://localhost:8000/api/generate/countries"),
+          fetch("http://localhost:8000/api/generate/sectors")
+        ]);
+        if (cRes.ok) {
+          const cData = await cRes.json();
+          setCountries(cData);
+        } else {
+          setCountries(FALLBACK_COUNTRIES);
         }
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          setSectors(sData);
+        } else {
+          setSectors(FALLBACK_SECTORS);
+        }
+      } catch (err) {
+        console.error("Failed to load backend metadata, using local presets.", err);
+        setCountries(FALLBACK_COUNTRIES);
+        setSectors(FALLBACK_SECTORS);
+      }
+    }
+    loadMeta();
+  }, []);
+
+  // 2. Fetch context preview whenever country or sector changes
+  useEffect(() => {
+    if (!country || !sector) {
+      setContextPreview(null);
+      return;
+    }
+
+    async function loadPreview() {
+      setPreviewLoading(true);
+      try {
+        const res = await fetch(
+          `http://localhost:8000/api/generate/context-preview?country=${encodeURIComponent(country)}&sector=${encodeURIComponent(sector)}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setContextPreview(data);
+        } else {
+          setContextPreview(null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch intelligence context preview.", err);
+        setContextPreview(null);
+      } finally {
+        setPreviewLoading(false);
+      }
+    }
+
+    loadPreview();
+  }, [country, sector]);
+
+  // 3. Cycle generating messages
+  useEffect(() => {
+    let interval;
+    if (generating) {
+      interval = setInterval(() => {
+        setLoadingStep((s) => (s < LOADING_MESSAGES.length - 1 ? s + 1 : s));
+      }, 2500);
+    } else {
+      setLoadingStep(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
     };
+  }, [generating]);
 
-    const downloadTemplate = () => {
-        if (!result) return;
-        const content = `
-POLICY TEMPLATE — GENERATED BY POLICYIQ
-========================================
-Country: ${result.country}
-Sector: ${result.sector}
-Suggested Title: ${result.suggested_title}
-Generated: ${new Date().toLocaleString()}
+  const handleGenerate = async () => {
+    if (!country || !sector) return;
+    setGenerating(true);
+    setResult(null);
+    setError(null);
 
-CONTEXT
--------
-${result.policy_context}
+    const parsedFocus = focusAreas
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-REGULATORY GAP
---------------
-${result.regulatory_gap
-                ? `${result.country} does NOT currently have a dedicated ${result.sector} framework.`
-                : `${result.country} has existing ${result.sector} regulation that this template supplements.`
-            }
+    try {
+      const res = await fetch("http://localhost:8000/api/generate/policy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country,
+          sector,
+          policy_scope: "national",
+          focus_areas: parsedFocus
+        })
+      });
 
-MATURITY LEVEL: ${result.maturity_level.toUpperCase()}
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Verification failed during LLM generation.");
+      }
+      setResult(data);
+    } catch (err) {
+      setError(err.message || "An unexpected network or pipeline error occurred.");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
-PRIORITY AREAS
---------------
-${result.priority_areas.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+  const handleDownload = () => {
+    if (!result) return;
+    window.open(`http://localhost:8000/api/generate/download/${result.policy_id}`, "_blank");
+  };
 
-RECOMMENDED SECTIONS
---------------------
-${result.recommended_sections.join('\n')}
+  const resetGenerator = () => {
+    setResult(null);
+    setCountry("");
+    setSector("");
+    setFocusAreas("");
+    setContextPreview(null);
+    setError(null);
+  };
 
-KEY REQUIREMENTS
-----------------
-${result.key_requirements.map((r, i) => `${i + 1}. ${r}`).join('\n')}
-
-IMPLEMENTATION TIMELINE
------------------------
-${Object.entries(result.implementation_timeline)
-                .map(([phase, desc]) => `${phase}:\n   ${desc}`)
-                .join('\n\n')}
-
-REFERENCE POLICIES
-------------------
-${result.reference_policies.map(p =>
-                    `- ${p.title} (${p.country})\n  ${p.source_url}`
-                ).join('\n')}
-
-RECOMMENDED TAGS
-----------------
-${result.recommended_tags.join(', ')}
-
-========================================
-Generated by PolicyIQ — Global Policy Intelligence System
-This template is for reference only and should be reviewed by legal experts.
-    `.trim();
-
-        const blob = new Blob([content], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `PolicyTemplate_${result.country}_${result.sector}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    return (
-        <div style={{ padding: "28px 32px" }}>
-            {/* Header */}
-            <div className="fade-up" style={{ marginBottom: 32 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                        <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
-                            <span style={{ color: "var(--cyan)", marginRight: 8 }}>■</span> DISCOVER / CREATION
-                        </div>
-                        <h1 style={{ fontFamily: "Inter", fontSize: 44, fontWeight: 800, color: "var(--text-main)", letterSpacing: "-1px", marginBottom: 16 }}>
-                            Draft new <span className="half-highlight">policies.</span>
-                        </h1>
-                        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
-                            Generate a policy framework template tailored to a specific country and sector
-                        </p>
-                    </div>
-                    <div style={{
-                        display: "flex", alignItems: "center", gap: 6,
-                        padding: "6px 14px", borderRadius: 20,
-                        background: "rgba(16,185,129,0.1)",
-                        border: "1px solid rgba(16,185,129,0.2)"
-                    }}>
-                        <Sparkles size={14} color="#10b981" />
-                        <span style={{ fontSize: 12, color: "#10b981", fontFamily: "JetBrains Mono", fontWeight: 600 }}>
-                            AI GENERATED
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Input Panel */}
-            <div className="card fade-up fade-up-1" style={{ padding: "24px 28px", marginBottom: 24 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-                    {/* Country */}
-                    <div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "JetBrains Mono", marginBottom: 8 }}>
-                            SELECT COUNTRY
-                        </div>
-                        <select value={country} onChange={e => setCountry(e.target.value)} style={{
-                            width: "100%", padding: "10px 14px", borderRadius: 8,
-                            background: "var(--bg-hover)", border: "1px solid var(--border)",
-                            color: "var(--text-main)", fontSize: 13, outline: "none",
-                        }}>
-                            <option value="">Choose a country...</option>
-                            {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                    </div>
-
-                    {/* Sector */}
-                    <div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "JetBrains Mono", marginBottom: 8 }}>
-                            SELECT SECTOR
-                        </div>
-                        <select value={sector} onChange={e => setSector(e.target.value)} style={{
-                            width: "100%", padding: "10px 14px", borderRadius: 8,
-                            background: "var(--bg-hover)", border: "1px solid var(--border)",
-                            color: "var(--text-main)", fontSize: 13, outline: "none",
-                        }}>
-                            <option value="">Choose a sector...</option>
-                            {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
-                </div>
-
-                {error && (
-                    <div style={{
-                        padding: "10px 14px", borderRadius: 8, marginBottom: 16,
-                        background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)",
-                        color: "#f43f5e", fontSize: 12
-                    }}>
-                        {error}
-                    </div>
-                )}
-
-                <button onClick={handleGenerate} disabled={!country || !sector || loading} style={{
-                    width: "100%", padding: "12px",
-                    background: (!country || !sector || loading)
-                        ? "var(--bg-hover)"
-                        : "linear-gradient(135deg, #059669, #10b981)",
-                    border: "none", borderRadius: 8,
-                    color: (!country || !sector || loading) ? "var(--text-muted)" : "#fff",
-                    fontFamily: "Syne", fontWeight: 700,
-                    fontSize: 14, cursor: (!country || !sector || loading) ? "not-allowed" : "pointer",
-                }}>
-                    {loading ? "Generating Template..." : "Generate Policy Template"}
-                </button>
-            </div>
-
-            {loading && <LoadingSpinner label="Analyzing country needs and generating template..." />}
-
-            {/* Results */}
-            {result && !loading && (
-                <div className="fade-up">
-
-                    {/* Title Banner */}
-                    <div className="card" style={{
-                        padding: "20px 24px", marginBottom: 16,
-                        borderColor: "rgba(16,185,129,0.3)",
-                        background: "rgba(16,185,129,0.05)"
-                    }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                            <div>
-                                <div style={{ fontSize: 11, color: "#10b981", fontFamily: "JetBrains Mono", marginBottom: 6 }}>
-                                    GENERATED TEMPLATE
-                                </div>
-                                <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 18, color: "var(--text-main)", marginBottom: 8 }}>
-                                    {result.suggested_title}
-                                </div>
-                                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                                    <SectorBadge sector={result.sector} />
-                                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                                        {result.country}
-                                    </span>
-                                    <span style={{
-                                        fontSize: 11, padding: "2px 8px", borderRadius: 4,
-                                        background: result.regulatory_gap
-                                            ? "rgba(244,63,94,0.08)" : "rgba(16,185,129,0.08)",
-                                        color: result.regulatory_gap ? "#f43f5e" : "#10b981",
-                                        border: `1px solid ${result.regulatory_gap ? "rgba(244,63,94,0.2)" : "rgba(16,185,129,0.2)"}`,
-                                        fontFamily: "JetBrains Mono"
-                                    }}>
-                                        {result.regulatory_gap ? "Gap Identified" : "Supplement Existing"}
-                                    </span>
-                                    <span style={{
-                                        fontSize: 11, padding: "2px 8px", borderRadius: 4,
-                                        background: "var(--bg-hover)", color: "var(--text-muted)",
-                                        border: "1px solid var(--border)", fontFamily: "JetBrains Mono"
-                                    }}>
-                                        {result.maturity_level} maturity
-                                    </span>
-                                </div>
-                            </div>
-                            <button onClick={downloadTemplate} style={{
-                                display: "flex", alignItems: "center", gap: 6,
-                                padding: "8px 16px", borderRadius: 8,
-                                background: "rgba(16,185,129,0.1)",
-                                border: "1px solid rgba(16,185,129,0.3)",
-                                color: "#10b981", fontSize: 12,
-                                cursor: "pointer", fontFamily: "JetBrains Mono",
-                                flexShrink: 0
-                            }}>
-                                <Download size={13} /> Download .txt
-                            </button>
-                        </div>
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-
-                        {/* Recommended Sections */}
-                        <div className="card" style={{ padding: "20px 24px" }}>
-                            <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 12 }}>
-                                RECOMMENDED SECTIONS
-                            </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                {result.recommended_sections.map((s, i) => (
-                                    <div key={i} style={{
-                                        display: "flex", alignItems: "center", gap: 8,
-                                        padding: "6px 10px", borderRadius: 6,
-                                        background: "var(--bg-hover)", border: "1px solid var(--border)"
-                                    }}>
-                                        <ChevronRight size={12} color="var(--cyan)" />
-                                        <span style={{ fontSize: 12, color: "var(--text-main)" }}>{s}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Key Requirements + Timeline */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                            <div className="card" style={{ padding: "20px 24px" }}>
-                                <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 12 }}>
-                                    KEY REQUIREMENTS
-                                </div>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                    {result.key_requirements.map((r, i) => (
-                                        <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                                            <div style={{
-                                                width: 18, height: 18, borderRadius: "50%",
-                                                background: "rgba(16,185,129,0.15)",
-                                                border: "1px solid rgba(16,185,129,0.3)",
-                                                color: "#10b981", fontSize: 10,
-                                                display: "flex", alignItems: "center", justifyContent: "center",
-                                                flexShrink: 0, fontFamily: "JetBrains Mono"
-                                            }}>
-                                                {i + 1}
-                                            </div>
-                                            <span style={{ fontSize: 12, color: "var(--text-main)", lineHeight: 1.5 }}>{r}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Implementation Timeline */}
-                            <div className="card" style={{ padding: "20px 24px" }}>
-                                <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 12 }}>
-                                    IMPLEMENTATION TIMELINE
-                                </div>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                    {Object.entries(result.implementation_timeline).map(([phase, desc], i) => (
-                                        <div key={i} style={{
-                                            padding: "8px 12px", borderRadius: 8,
-                                            background: "var(--bg-hover)", border: "1px solid var(--border)"
-                                        }}>
-                                            <div style={{ fontSize: 11, color: "var(--cyan)", fontFamily: "JetBrains Mono", marginBottom: 3 }}>
-                                                {phase}
-                                            </div>
-                                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{desc}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Priority Areas + Tags */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                        <div className="card" style={{ padding: "20px 24px" }}>
-                            <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 12 }}>
-                                PRIORITY AREAS FOR {result.country.toUpperCase()}
-                            </div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                {result.priority_areas.map((p, i) => (
-                                    <span key={i} style={{
-                                        fontSize: 12, padding: "4px 12px", borderRadius: 20,
-                                        background: "rgba(245,158,11,0.1)",
-                                        border: "1px solid rgba(245,158,11,0.2)",
-                                        color: "#f59e0b"
-                                    }}>
-                                        {p}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="card" style={{ padding: "20px 24px" }}>
-                            <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 12 }}>
-                                RECOMMENDED POLICY TAGS (BY PRIORITY)
-                            </div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                {result.recommended_tags.map((t, i) => (
-                                    <span key={i} style={{
-                                        fontSize: 11, padding: "3px 10px", borderRadius: 4,
-                                        background: "var(--bg-hover)", color: "var(--text-muted)",
-                                        border: "1px solid var(--border)", fontFamily: "JetBrains Mono"
-                                    }}>
-                                        #{t}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Reference Policies */}
-                    <div className="card" style={{ padding: "20px 24px" }}>
-                        <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 12 }}>
-                            REFERENCE POLICIES — MODEL THESE FRAMEWORKS
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {result.reference_policies.map((p, i) => (
-                                <div key={i} style={{
-                                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                                    padding: "10px 14px", borderRadius: 8,
-                                    background: "var(--bg-hover)", border: "1px solid var(--border)"
-                                }}>
-                                    <div>
-                                        <div style={{ fontSize: 13, color: "var(--text-main)", fontWeight: 600 }}>{p.title}</div>
-                                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.country}</div>
-                                    </div>
-                                    {p.source_url && (
-                                        <a href={p.source_url} target="_blank" rel="noreferrer" style={{
-                                            fontSize: 11, color: "var(--cyan)",
-                                            textDecoration: "none", fontFamily: "JetBrains Mono",
-                                            padding: "3px 8px", borderRadius: 4,
-                                            border: "1px solid rgba(34,211,238,0.2)",
-                                            background: "rgba(34,211,238,0.06)"
-                                        }}>
-                                            ↗ Source
-                                        </a>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                </div>
-            )}
+  return (
+    <div style={{
+      maxWidth: "900px",
+      margin: "0 auto",
+      padding: "32px 40px",
+      fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+      color: "#0a0a0a"
+    }}>
+      {/* Page Header */}
+      <div style={{ marginBottom: "28px" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          fontSize: "10px",
+          fontFamily: "'JetBrains Mono', monospace",
+          color: "#9ca3af",
+          textTransform: "uppercase",
+          letterSpacing: "0.1em",
+          marginBottom: "12px"
+        }}>
+          <span style={{ color: "#5c9e2e" }}>●</span> Discover / Creation
         </div>
-    );
+        <h1 style={{
+          fontSize: "28px",
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          marginBottom: "8px",
+          fontFamily: "'DM Sans', sans-serif"
+        }}>
+          Draft new policies.
+        </h1>
+        <p style={{
+          fontSize: "13px",
+          color: "#6b7280",
+          lineHeight: "1.6"
+        }}>
+          Generate a professionally structured policy framework template tailored to a country's regulatory context and identified gaps.
+        </p>
+      </div>
+
+      {/* ERROR CARD */}
+      {error && (
+        <div style={{
+          background: "#fef2f2",
+          border: "1px solid #fca5a5",
+          borderRadius: "8px",
+          padding: "20px",
+          marginBottom: "24px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#b91c1c" }}>
+            <AlertTriangle size={18} />
+            <span style={{ fontWeight: 600, fontSize: "14px" }}>Generation Pipeline Issue</span>
+          </div>
+          <p style={{ fontSize: "13px", color: "#7f1d1d", lineHeight: "1.5" }}>
+            {error}
+          </p>
+          <button
+            onClick={handleGenerate}
+            style={{
+              alignSelf: "flex-start",
+              background: "#b91c1c",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "6px",
+              padding: "8px 16px",
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "background 0.2s"
+            }}
+            onMouseEnter={(e) => e.target.style.background = "#991b1b"}
+            onMouseLeave={(e) => e.target.style.background = "#b91c1c"}
+          >
+            Retry Generation
+          </button>
+        </div>
+      )}
+
+      {/* VIEW PIPELINE: CONFIG OR LOADING OR RESULT */}
+      {!generating && !result && (
+        <>
+          {/* STEP 1 - Configuration Card */}
+          <div style={{
+            background: "#ffffff",
+            border: "1px solid #e8e8e8",
+            borderRadius: "8px",
+            padding: "24px 28px",
+            marginBottom: "20px"
+          }}>
+            {/* Section label */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginBottom: "20px"
+            }}>
+              <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em" }}>01 CONFIGURE</span>
+              <div style={{ flex: 1, height: "1px", background: "#f0f0f0" }} />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {/* Dropdowns Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                {/* Country Selection */}
+                <div>
+                  <label style={{
+                    display: "block",
+                    fontSize: "10px",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: "#9ca3af",
+                    letterSpacing: "0.08em",
+                    marginBottom: "6px"
+                  }}>SELECT COUNTRY</label>
+                  <select
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    style={{
+                      width: "100%",
+                      height: "40px",
+                      border: "1px solid #e8e8e8",
+                      borderRadius: "6px",
+                      padding: "0 12px",
+                      fontSize: "13px",
+                      fontFamily: "'DM Sans', sans-serif",
+                      color: "#0a0a0a",
+                      background: "#ffffff",
+                      cursor: "pointer",
+                      outline: "none",
+                      transition: "border-color 0.15s, box-shadow 0.15s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#5c9e2e";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(92,158,46,0.08)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#e8e8e8";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  >
+                    <option value="">Select jurisdiction...</option>
+                    {countries.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sector Selection */}
+                <div>
+                  <label style={{
+                    display: "block",
+                    fontSize: "10px",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: "#9ca3af",
+                    letterSpacing: "0.08em",
+                    marginBottom: "6px"
+                  }}>SELECT SECTOR</label>
+                  <select
+                    value={sector}
+                    onChange={(e) => setSector(e.target.value)}
+                    style={{
+                      width: "100%",
+                      height: "40px",
+                      border: "1px solid #e8e8e8",
+                      borderRadius: "6px",
+                      padding: "0 12px",
+                      fontSize: "13px",
+                      fontFamily: "'DM Sans', sans-serif",
+                      color: "#0a0a0a",
+                      background: "#ffffff",
+                      cursor: "pointer",
+                      outline: "none",
+                      transition: "border-color 0.15s, box-shadow 0.15s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#5c9e2e";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(92,158,46,0.08)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#e8e8e8";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  >
+                    <option value="">Select industry domain...</option>
+                    {sectors.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Focus Areas Input */}
+              <div>
+                <label style={{
+                  display: "block",
+                  fontSize: "10px",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: "#9ca3af",
+                  letterSpacing: "0.08em",
+                  marginBottom: "6px"
+                }}>FOCUS AREAS (OPTIONAL)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. incident response, data localization, algorithmic auditing"
+                  value={focusAreas}
+                  onChange={(e) => setFocusAreas(e.target.value)}
+                  style={{
+                    width: "100%",
+                    height: "40px",
+                    border: "1px solid #e8e8e8",
+                    borderRadius: "6px",
+                    padding: "0 12px",
+                    fontSize: "13px",
+                    fontFamily: "'DM Sans', sans-serif",
+                    color: "#0a0a0a",
+                    background: "#ffffff",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    transition: "border-color 0.15s, box-shadow 0.15s"
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#5c9e2e";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(92,158,46,0.08)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#e8e8e8";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+                <span style={{ display: "block", fontSize: "11px", color: "#9ca3af", marginTop: "6px" }}>
+                  Provide comma-separated keywords. Leave blank to auto-detect optimal coverage parameters.
+                </span>
+              </div>
+
+              {/* Generate Button */}
+              <button
+                onClick={handleGenerate}
+                disabled={!country || !sector}
+                style={{
+                  marginTop: "8px",
+                  width: "100%",
+                  height: "44px",
+                  background: (!country || !sector) ? "#e8e8e8" : "#0a0a0a",
+                  color: (!country || !sector) ? "#9ca3af" : "#ffffff",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontWeight: 600,
+                  cursor: (!country || !sector) ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  transition: "opacity 0.2s, background 0.2s"
+                }}
+                onMouseEnter={(e) => {
+                  if (country && sector) e.target.style.background = "#222222";
+                }}
+                onMouseLeave={(e) => {
+                  if (country && sector) e.target.style.background = "#0a0a0a";
+                }}
+              >
+                <Sparkles size={14} /> Generate Policy Framework
+              </button>
+            </div>
+          </div>
+
+          {/* STEP 2 - Context Preview Card */}
+          {previewLoading && (
+            <div style={{
+              background: "#fafafa",
+              border: "1px solid #e8e8e8",
+              borderRadius: "8px",
+              padding: "20px 24px",
+              textAlign: "center"
+            }}>
+              <LoadingSpinner label="Compiling intelligence context..." />
+            </div>
+          )}
+
+          {!previewLoading && contextPreview && (
+            <div style={{
+              background: "#fafafa",
+              border: "1px solid #e8e8e8",
+              borderRadius: "8px",
+              padding: "20px 24px",
+              animation: "fadeIn 0.3s ease-out"
+            }}>
+              {/* Header */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "16px"
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "10px",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: "#9ca3af",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em"
+                }}>
+                  <span style={{ color: "#5c9e2e", fontSize: "14px" }}>●</span> Intelligence Context
+                </div>
+                <span style={{ fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#6b7280", background: "#ffffff", padding: "3px 8px", borderRadius: "4px", border: "1px solid #e8e8e8" }}>
+                  Live Data Sync
+                </span>
+              </div>
+
+              {/* Grid Columns */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "28px" }}>
+                {/* Left Col - Country profile */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div>
+                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
+                      REGULATORY MATURITY
+                    </span>
+                    <span style={{
+                      fontSize: "12px",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontWeight: 600,
+                      color: "#0a0a0a",
+                      textTransform: "uppercase",
+                      background: "#ffffff",
+                      border: "1px solid #e8e8e8",
+                      borderRadius: "4px",
+                      padding: "2px 8px"
+                    }}>
+                      {contextPreview.maturity}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "6px" }}>
+                      EXISTING COVERED SECTORS
+                    </span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {contextPreview.existing_sectors && contextPreview.existing_sectors.length > 0 ? (
+                        contextPreview.existing_sectors.map((s) => (
+                          <span key={s} style={{
+                            fontSize: "11px",
+                            color: "#374151",
+                            background: "#ffffff",
+                            border: "1px solid #e8e8e8",
+                            borderRadius: "4px",
+                            padding: "2px 6px"
+                          }}>{s}</span>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: "12px", color: "#6b7280", fontStyle: "italic" }}>None listed</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
+                      PRIORITY NEEDS
+                    </span>
+                    <span style={{ fontSize: "12px", color: "#374151", lineHeight: "1.5" }}>
+                      {contextPreview.priority_needs ? contextPreview.priority_needs.join(", ") : "Cybersecurity controls and regional framework guidelines."}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right Col - DB findings */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div>
+                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
+                      EXISTING {sector.toUpperCase()} POLICIES
+                    </span>
+                    <span style={{ fontSize: "12px", color: "#374151", fontWeight: 500 }}>
+                      {contextPreview.existing_count > 0 ? (
+                        <span style={{ color: "#5c9e2e" }}>✓ {contextPreview.existing_count} policies found in database</span>
+                      ) : (
+                        <span style={{ color: "#6b7280" }}>No existing policies — drafting framework from scratch</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
+                      SEMANTIC REFERENCES
+                    </span>
+                    <span style={{ fontSize: "12px", color: "#374151" }}>
+                      Top 5 matching frameworks from other jurisdictions will serve as drafting blueprints.
+                    </span>
+                  </div>
+
+                  <div>
+                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "6px" }}>
+                      IDENTIFIED GAPS TO RESOLVE
+                    </span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {contextPreview.gaps && contextPreview.gaps.length > 0 ? (
+                        contextPreview.gaps.slice(0, 4).map((gap) => (
+                          <span
+                            key={gap}
+                            style={{
+                              fontSize: "11px",
+                              color: "#856404",
+                              background: "#fff3cd",
+                              border: "1px solid #ffeaa7",
+                              borderRadius: "4px",
+                              padding: "2px 8px"
+                            }}
+                          >
+                            {gap}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: "12px", color: "#6b7280", fontStyle: "italic" }}>No outstanding gaps detected</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* STEP 3 - Generation Loading State */}
+      {generating && (
+        <div style={{
+          background: "#ffffff",
+          border: "1px solid #e8e8e8",
+          borderRadius: "8px",
+          padding: "48px 40px",
+          textAlign: "center",
+          animation: "fadeIn 0.3s ease-out"
+        }}>
+          <LoadingSpinner label="" />
+          <h2 style={{
+            fontSize: "16px",
+            fontWeight: 600,
+            marginTop: "20px",
+            marginBottom: "8px",
+            color: "#0a0a0a"
+          }}>
+            {LOADING_MESSAGES[loadingStep]}
+          </h2>
+          <p style={{
+            fontSize: "11px",
+            fontFamily: "'JetBrains Mono', monospace",
+            color: "#9ca3af",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em"
+          }}>
+            Drafting framework · Please wait 15-30s
+          </p>
+        </div>
+      )}
+
+      {/* STEP 4 - Generated Document Display */}
+      {result && !generating && (
+        <div style={{ animation: "fadeIn 0.4s ease-out" }}>
+          {/* Document Header Bar */}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: "20px"
+          }}>
+            <div>
+              <span style={{
+                display: "block",
+                fontSize: "10px",
+                fontFamily: "'JetBrains Mono', monospace",
+                color: "#9ca3af",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase"
+              }}>
+                Generated Framework
+              </span>
+              <h2 style={{
+                fontSize: "18px",
+                fontWeight: 700,
+                color: "#0a0a0a",
+                marginTop: "4px",
+                fontFamily: "'DM Sans', sans-serif"
+              }}>
+                {result.document.title}
+              </h2>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
+              <button
+                onClick={resetGenerator}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "#ffffff",
+                  border: "1px solid #e8e8e8",
+                  borderRadius: "6px",
+                  padding: "8px 14px",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  color: "#374151",
+                  cursor: "pointer",
+                  transition: "background 0.2s"
+                }}
+                onMouseEnter={(e) => e.target.style.background = "#fafafa"}
+                onMouseLeave={(e) => e.target.style.background = "#ffffff"}
+              >
+                <RotateCcw size={13} /> Generate New
+              </button>
+
+              <button
+                onClick={handleDownload}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "#0a0a0a",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "8px 16px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "background 0.2s"
+                }}
+                onMouseEnter={(e) => e.target.style.background = "#222222"}
+                onMouseLeave={(e) => e.target.style.background = "#0a0a0a"}
+              >
+                <FileDown size={14} /> Download PDF
+              </button>
+            </div>
+          </div>
+
+          {/* Context Used Strip */}
+          <div style={{
+            background: "#fafafa",
+            border: "1px solid #e8e8e8",
+            borderRadius: "6px",
+            padding: "10px 16px",
+            marginBottom: "24px",
+            fontSize: "11px",
+            color: "#6b7280",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }}>
+            <span style={{ color: "#5c9e2e", fontSize: "14px", lineHeight: "1" }}>●</span>
+            <span>
+              Generated using {result.context_used.reference_policies.length} reference policies · {result.context_used.gaps_identified.length} gaps addressed · Tailored to {result.country} profile
+            </span>
+          </div>
+
+          {/* Table of contents and preamble brief */}
+          <div style={{
+            background: "#ffffff",
+            border: "1px solid #e8e8e8",
+            borderRadius: "8px",
+            padding: "20px 24px",
+            marginBottom: "24px"
+          }}>
+            <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px" }}>
+              EXECUTIVE BRIEF & PREAMBLE
+            </span>
+            <p style={{
+              fontSize: "13px",
+              color: "#374151",
+              lineHeight: "1.7",
+              textAlign: "justify",
+              marginBottom: "16px"
+            }}>
+              <b>Executive Summary:</b> {result.document.executive_summary}
+            </p>
+            <div style={{ height: "1px", background: "#f0f0f0", marginBottom: "16px" }} />
+            <p style={{
+              fontSize: "13px",
+              color: "#6b7280",
+              lineHeight: "1.7",
+              textAlign: "justify",
+              fontStyle: "italic"
+            }}>
+              <b>Legislative Preamble:</b> {result.document.preamble}
+            </p>
+          </div>
+
+          {/* Document Sections */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            {result.document.sections.map((section, idx) => (
+              <div key={section.number} style={{ marginBottom: "8px" }}>
+                {/* Section Header Wrapper */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginBottom: "10px"
+                }}>
+                  <span style={{
+                    fontSize: "10px",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: "#5c9e2e",
+                    fontWeight: 600,
+                    width: "28px"
+                  }}>
+                    {section.number.padStart(2, "0")}
+                  </span>
+                  <div style={{ width: "20px", height: "1px", background: "#e8e8e8" }} />
+                  <span style={{
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#0a0a0a",
+                    fontFamily: "'DM Sans', sans-serif"
+                  }}>
+                    {section.title}
+                  </span>
+                  <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
+                </div>
+
+                {/* Section Content card */}
+                <div style={{
+                  background: "#ffffff",
+                  border: "1px solid #e8e8e8",
+                  borderRadius: "8px",
+                  padding: "20px 24px"
+                }}>
+                  <p style={{
+                    fontSize: "13px",
+                    color: "#374151",
+                    lineHeight: "1.75",
+                    textAlign: "justify",
+                    margin: 0
+                  }}>
+                    {section.content}
+                  </p>
+
+                  {/* Subsections if they exist */}
+                  {section.subsections && section.subsections.length > 0 && (
+                    <div style={{
+                      marginTop: "16px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "12px",
+                      borderTop: "1px solid #f3f4f6",
+                      paddingTop: "16px"
+                    }}>
+                      {section.subsections.map((sub) => (
+                        <div key={sub.number}>
+                          <h4 style={{
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            color: "#0a0a0a",
+                            marginTop: 0,
+                            marginBottom: "4px",
+                            borderLeft: "2.5px solid #5c9e2e",
+                            paddingLeft: "8px"
+                          }}>
+                            {sub.number} {sub.title}
+                          </h4>
+                          <p style={{
+                            fontSize: "12.5px",
+                            color: "#4b5563",
+                            lineHeight: "1.65",
+                            textAlign: "justify",
+                            margin: 0,
+                            paddingLeft: "10.5px"
+                          }}>
+                            {sub.content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* IMPLEMENTATION ROADMAP TIMELINE */}
+          {result.document.implementation_timeline && result.document.implementation_timeline.length > 0 && (
+            <div style={{ marginTop: "32px", marginBottom: "28px" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "16px"
+              }}>
+                <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em" }}>IMPLEMENTATION TIMELINE</span>
+                <div style={{ flex: 1, height: "1px", background: "#f0f0f0" }} />
+              </div>
+
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${result.document.implementation_timeline.length}, 1fr)`,
+                gap: "16px"
+              }}>
+                {result.document.implementation_timeline.map((phase, i) => (
+                  <div
+                    key={phase.phase}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #e8e8e8",
+                      borderRadius: "8px",
+                      padding: "16px 20px"
+                    }}
+                  >
+                    <div style={{
+                      fontSize: "11px",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontWeight: 600,
+                      color: "#0a0a0a",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "4px"
+                    }}>
+                      <span>{phase.phase.toUpperCase()}</span>
+                      <span style={{ color: "#5c9e2e", fontWeight: 400 }}>{phase.duration}</span>
+                    </div>
+                    <div style={{ height: "1px", background: "#f0f0f0", margin: "8px 0" }} />
+                    <ul style={{
+                      margin: 0,
+                      paddingLeft: "14px",
+                      fontSize: "12px",
+                      color: "#4b5563",
+                      lineHeight: "1.6",
+                      listStyleType: "square"
+                    }}>
+                      {phase.actions.map((act, j) => (
+                        <li key={j} style={{ marginBottom: "6px" }}>{act}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* REFERENCES & BASIS SECTION */}
+          {result.document.references && result.document.references.length > 0 && (
+            <div style={{ marginTop: "32px", marginBottom: "20px" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "16px"
+              }}>
+                <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em" }}>REFERENCES & BASIS</span>
+                <div style={{ flex: 1, height: "1px", background: "#f0f0f0" }} />
+              </div>
+
+              <div style={{
+                background: "#ffffff",
+                border: "1px solid #e8e8e8",
+                borderRadius: "8px",
+                padding: "12px 20px"
+              }}>
+                {result.document.references.map((ref, i) => (
+                  <div
+                    key={ref.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "12px",
+                      padding: "10px 0",
+                      borderBottom: i < result.document.references.length - 1 ? "1px solid #f3f4f6" : "none"
+                    }}
+                  >
+                    <span style={{
+                      fontSize: "10px",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      color: "#5c9e2e",
+                      fontWeight: 600,
+                      marginTop: "2px",
+                      width: "28px"
+                    }}>
+                      [{ref.id}]
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "12.5px", fontWeight: 500, color: "#0a0a0a" }}>
+                        {ref.title}
+                      </div>
+                      <div style={{ fontSize: "11px", color: "#9ca3af", fontFamily: "'JetBrains Mono', monospace", marginTop: "2px" }}>
+                        {ref.country} ({ref.year})
+                      </div>
+                      <div style={{ fontSize: "11.5px", color: "#6b7280", marginTop: "3px" }}>
+                        {ref.relevance}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

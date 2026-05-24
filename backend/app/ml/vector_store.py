@@ -198,6 +198,79 @@ def search_similar_chroma(
     return matches
 
 
+# 5.5. Semantic Search via unstructured text query against ChromaDB
+def semantic_search(
+    query_text: str,
+    n: int = 5,
+    sector_filter: str = None,
+    exclude_country: str = None
+) -> list:
+    """Queries ChromaDB to find similar policies using an unstructured text query."""
+    if collection is None:
+        print("[WARN] Chroma collection is not initialized. Returning empty results.")
+        return []
+
+    from app.ml.embedder import embed_text
+    embedding = embed_text(query_text)
+
+    # Build filters (ChromaDB query syntax)
+    conditions = []
+    if sector_filter:
+        conditions.append({"sector": {"$eq": sector_filter}})
+    if exclude_country:
+        conditions.append({"country": {"$ne": exclude_country}})
+
+    where_filter = None
+    if len(conditions) == 1:
+        where_filter = conditions[0]
+    elif len(conditions) > 1:
+        where_filter = {"$and": conditions}
+
+    # Query ChromaDB collection
+    results = collection.query(
+        query_embeddings=[embedding.tolist()],
+        n_results=n + 5, # slight over-fetch
+        where=where_filter
+    )
+
+    matches = []
+    ids = results.get("ids", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+    documents = results.get("documents", [[]])[0]
+
+    for idx, match_id in enumerate(ids):
+        meta = metadatas[idx]
+        dist = distances[idx]
+        doc = documents[idx]
+
+        approx_similarity = 1.0 - float(dist)
+
+        # Retrieve publication year from metadata safely
+        try:
+            year_val = int(meta.get("year")) if meta.get("year") else datetime.now().year
+        except Exception:
+            year_val = 2023
+
+        matches.append({
+            "id": match_id,
+            "title": meta.get("title", ""),
+            "sector": meta.get("sector", ""),
+            "country": meta.get("country", ""),
+            "region": meta.get("region", ""),
+            "content": doc,
+            "approx_similarity": approx_similarity,
+            "year": year_val,
+            "relevance": f"Provides key reference on {meta.get('sector', '')} from similar jurisdiction."
+        })
+
+        if len(matches) >= n:
+            break
+
+    return matches
+
+
+
 # 6. Function to drop and recreate ChromaDB collection
 def rebuild_chroma_index():
     """Drops the policies_v2 collection, recreates it, and performs a fresh sync."""

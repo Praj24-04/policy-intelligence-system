@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { fetchPolicies, comparePolicies } from "../services/api";
 import SectorBadge from "../components/SectorBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { GitCompare, CheckCircle2, XCircle, Lightbulb, RotateCcw, FileDown } from "lucide-react";
+import { GitCompare, CheckCircle2, XCircle, Lightbulb, RotateCcw, FileDown, Search } from "lucide-react";
 
 export default function Compare() {
   const [policies,     setPolicies]     = useState([]);
@@ -12,8 +12,19 @@ export default function Compare() {
   const [loading,      setLoading]      = useState(false);
   const [step,         setStep]         = useState(1);
   const [sectorFilter, setSectorFilter] = useState("");
+  const [search,       setSearch]       = useState("");
 
   const reportRef = useRef(null);
+
+  const filtered = policies.filter(p => {
+    if (!search) return true;
+    const query = search.toLowerCase();
+    return (
+      (p.title && p.title.toLowerCase().includes(query)) ||
+      (p.country && p.country.toLowerCase().includes(query)) ||
+      (p.sector && p.sector.toLowerCase().includes(query))
+    );
+  });
 
   useEffect(() => {
     fetchPolicies(sectorFilter ? { sector: sectorFilter } : {}).then(d => {
@@ -79,7 +90,27 @@ export default function Compare() {
       }
     };
     
-    await html2pdf().set(options).from(element).save();
+    const pdfBase64 = await html2pdf().set(options).from(element).output('datauristring');
+    
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "http://localhost:8000/api/generate/download-pdf";
+
+    const base64Input = document.createElement("input");
+    base64Input.type = "hidden";
+    base64Input.name = "base64_data";
+    base64Input.value = pdfBase64;
+    form.appendChild(base64Input);
+
+    const filenameInput = document.createElement("input");
+    filenameInput.type = "hidden";
+    filenameInput.name = "filename";
+    filenameInput.value = filename;
+    form.appendChild(filenameInput);
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
   };
 
   // Sector filter list mapping
@@ -225,6 +256,41 @@ export default function Compare() {
         {/* SECTOR FILTER + POLICY GRID (steps 1 & 2) */}
         {step < 3 && (
           <>
+            {/* Search Input */}
+            <div style={{ position: "relative", marginBottom: "16px", width: "100%" }}>
+              <span style={{ 
+                position: "absolute", 
+                left: 16, 
+                top: "50%", 
+                transform: "translateY(-50%)",
+                pointerEvents: "none",
+                display: "flex",
+                alignItems: "center",
+                color: "var(--text-dim)"
+              }}>
+                <Search size={16} />
+              </span>
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search policies by title, sector, or country..."
+                className="search-input-custom"
+                style={{
+                  width: "100%",
+                  height: 48,
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  padding: "0 16px 0 44px",
+                  outline: "none",
+                  fontSize: "14px",
+                  fontFamily: "'DM Sans', sans-serif",
+                  background: "var(--bg-card)",
+                  color: "var(--text-main)",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
+                }}
+              />
+            </div>
+
             {/* Filter pills row */}
             <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
               {filterMapping.map(f => {
@@ -254,7 +320,7 @@ export default function Compare() {
  
               {/* Policy count */}
               <div style={{ marginLeft: "auto", fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>
-                Showing {policies.length} policies
+                Showing {filtered.length} policies
               </div>
             </div>
 
@@ -313,7 +379,7 @@ export default function Compare() {
             {/* Policy selection grid */}
             <div style={{ maxHeight: "520px", overflowY: "auto", paddingRight: "4px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
-                {policies.map((p) => {
+                {filtered.map((p) => {
                   const isSelectedA = sel1?.id === p.id;
                   const isSelectedB = sel2?.id === p.id;
 

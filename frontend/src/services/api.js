@@ -1,16 +1,23 @@
-const BASE = "http://localhost:8000/api";
+const BASE = "http://localhost:8001/api";
 
-export const getToken = () => localStorage.getItem("token");
+export const getToken = () => {
+  const token = localStorage.getItem("token");
+  console.log("--- getToken() called. Returned:", token);
+  return token;
+};
 
-const get = (url) =>
-  fetch(`${BASE}${url}`, {
+const get = (url) => {
+  console.log(`--- API GET [${url}] initiating with token:`, getToken());
+  return fetch(`${BASE}${url}`, {
     headers: {
       "Authorization": `Bearer ${getToken()}`,
       "Content-Type": "application/json",
     }
   })
   .then(r => {
+    console.log(`--- API GET [${url}] response status:`, r.status);
     if (r.status === 401) {
+      console.warn(`--- API GET [${url}] returned 401. Logging out user! Token in localStorage was:`, localStorage.getItem("token"));
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.reload();
@@ -22,6 +29,7 @@ const get = (url) =>
     console.error(`API Error [${url}]:`, err);
     return null;
   });
+};
 
 // ── Auth ───────────────────────────────────────────────────────────────────
 const postJson = async (url, body) => {
@@ -69,8 +77,18 @@ export const fetchRegionDist   = ()   => get("/analytics/regions");
 export const fetchTrends       = ()   => get("/analytics/trends");
 export const fetchStatus       = ()   => get("/analytics/status");
 export const comparePolicies   = (id1, id2) => get(`/compare/v2?id1=${id1}&id2=${id2}`);
-export const fetchRecommendations = (policyId, topN = 5) =>
-  get(`/recommend/v2/${policyId}?top_n=${topN}`);
+export const fetchRecommendations = (policyId, topN = 5, weights = null) => {
+  let url = `/recommend/v2/${policyId}?top_n=${topN}`;
+  if (weights) {
+    const { sector_gap, regulatory_maturity, semantic_need, regional_pressure, economic_tier } = weights;
+    if (sector_gap !== undefined && sector_gap !== null) url += `&w_sector=${sector_gap}`;
+    if (regulatory_maturity !== undefined && regulatory_maturity !== null) url += `&w_maturity=${regulatory_maturity}`;
+    if (semantic_need !== undefined && semantic_need !== null) url += `&w_semantic=${semantic_need}`;
+    if (regional_pressure !== undefined && regional_pressure !== null) url += `&w_regional=${regional_pressure}`;
+    if (economic_tier !== undefined && economic_tier !== null) url += `&w_economic=${economic_tier}`;
+  }
+  return get(url);
+};
 export const fetchMLStatus = () => get("/ml/status");
 export const fetchClusters = () => get(`/recommend/clusters/summary`);
 
@@ -83,3 +101,16 @@ export const submitFeedback = (policyId, country, helpful) =>
 
 export const fetchFeedbackSummary = () =>
   get("/feedback/summary");
+
+export const generatePolicyTemplate = (country, sector) =>
+  fetch(`${BASE}/generate/policy`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${getToken()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ country, sector })
+  }).then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  });

@@ -1,0 +1,30 @@
+--- get_current_user called at 2026-05-24 21:17:55.525212 ---
+Received Token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3Nzk2NTgwMTEsInR5cGUiOiJhY2Nlc3MifQ.qMfiLBSEiTUXjOLkH29QbYyiqGal6pUZtF9Dx2skRSA'
+Decoded Payload: {'sub': '7', 'role': 'user', 'exp': 1779658011, 'type': 'access'}
+Token verification successful!
+
+--- get_current_user called at 2026-05-24 21:17:55.793422 ---
+Received Token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3Nzk2NTgwMTEsInR5cGUiOiJhY2Nlc3MifQ.qMfiLBSEiTUXjOLkH29QbYyiqGal6pUZtF9Dx2skRSA'
+Decoded Payload: {'sub': '7', 'role': 'user', 'exp': 1779658011, 'type': 'access'}
+Token verification successful!
+
+--- get_current_user called at 2026-05-24 21:18:05.066186 ---
+Received Token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3Nzk2NTgwMTEsInR5cGUiOiJhY2Nlc3MifQ.qMfiLBSEiTUXjOLkH29QbYyiqGal6pUZtF9Dx2skRSA'
+Decoded Payload: {'sub': '7', 'role': 'user', 'exp': 1779658011, 'type': 'access'}
+Token verification successful!
+
+--- get_current_user called at 2026-05-24 21:18:05.144708 ---
+Received Token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3Nzk2NTgwMTEsInR5cGUiOiJhY2Nlc3MifQ.qMfiLBSEiTUXjOLkH29QbYyiqGal6pUZtF9Dx2skRSA'
+Decoded Payload: {'sub': '7', 'role': 'user', 'exp': 1779658011, 'type': 'access'}
+Token verification successful!
+
+--- get_current_user called at 2026-05-24 21:18:14.965584 ---
+Received Token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3Nzk2NTgwMTEsInR5cGUiOiJhY2Nlc3MifQ.qMfiLBSEiTUXjOLkH29QbYyiqGal6pUZtF9Dx2skRSA'
+Decoded Payload: {'sub': '7', 'role': 'user', 'exp': 1779658011, 'type': 'access'}
+Token verification successful!
+
+--- get_current_user called at 2026-05-24 21:18:15.143884 ---
+Received Token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIiLCJleHAiOjE3Nzk2NTgwMTEsInR5cGUiOiJhY2Nlc3MifQ.qMfiLBSEiTUXjOLkH29QbYyiqGal6pUZtF9Dx2skRSA'
+Decoded Payload: {'sub': '7', 'role': 'user', 'exp': 1779658011, 'type': 'access'}
+Token verification successful!
+
