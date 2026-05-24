@@ -43,6 +43,8 @@ export default function Sidebar({ user, onLogout }) {
     });
   }, []);
 
+  const [logoutHover, setLogoutHover] = useState(false);
+
   const userInitial = user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U";
 
   // Premium translucent green highlight and border accent
@@ -158,10 +160,17 @@ export default function Sidebar({ user, onLogout }) {
 
           <div 
             onClick={onLogout}
+            onMouseEnter={() => setLogoutHover(true)}
+            onMouseLeave={() => setLogoutHover(false)}
             style={{
               display: "flex", alignItems: "center", gap: 12,
-              padding: "10px 14px", borderRadius: 8, marginBottom: 2,
-              color: "var(--text-muted)", fontSize: 14, fontWeight: 500,
+              padding: logoutHover ? "10px 14px 10px 11px" : "10px 14px", 
+              borderRadius: 8, marginBottom: 2,
+              background: logoutHover ? "rgba(244, 63, 94, 0.06)" : "transparent",
+              color: logoutHover ? "var(--red)" : "var(--text-muted)",
+              borderLeft: logoutHover ? "3px solid var(--red)" : "3px solid transparent",
+              fontSize: 14, fontWeight: logoutHover ? 600 : 500,
+              transition: "all 0.15s",
               cursor: "pointer"
             }}
           >

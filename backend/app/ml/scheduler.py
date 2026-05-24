@@ -34,6 +34,14 @@ async def embed_new_policies():
             """
         )
         rows = cur.fetchall()
+    except Exception as e:
+        print(f"[SCHEDULER] Cannot query for unembedded policies (pgvector may not be installed): {e}")
+        try:
+            conn.conn.rollback()
+        except Exception:
+            pass
+        conn.close()
+        return
     finally:
         conn.close()
 
@@ -54,7 +62,7 @@ async def embed_new_policies():
             emb = embed_policy(p)
 
             # 2. Call store_embedding()
-            store_embedding(pid, emb)
+            store_embedding(pid, emb, "nlpaueb/legal-bert-base-uncased")
 
             # 3. Call sync_policy_to_chroma()
             sync_policy_to_chroma(p, emb)

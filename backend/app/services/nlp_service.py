@@ -110,6 +110,41 @@ def _save_cache(policy_id: str, countries: list, conn):
         pass
 
 
+def _parse_tags(raw_tags):
+    """Parse tags from either JSON string or PostgreSQL array format."""
+    if not raw_tags:
+        return []
+    if isinstance(raw_tags, list):
+        return raw_tags
+    raw_tags = str(raw_tags).strip()
+    # Try JSON first
+    try:
+        parsed = json.loads(raw_tags)
+        if isinstance(parsed, list):
+            return parsed
+    except (json.JSONDecodeError, ValueError):
+        pass
+    # Handle PostgreSQL array format: {tag1,"tag two",tag3}
+    if raw_tags.startswith("{") and raw_tags.endswith("}"):
+        inner = raw_tags[1:-1]
+        tags = []
+        current = ""
+        in_quotes = False
+        for ch in inner:
+            if ch == '"':
+                in_quotes = not in_quotes
+            elif ch == ',' and not in_quotes:
+                tags.append(current.strip().strip('"'))
+                current = ""
+            else:
+                current += ch
+        if current.strip():
+            tags.append(current.strip().strip('"'))
+        return tags
+    # Fallback: comma-separated
+    return [t.strip() for t in raw_tags.split(",") if t.strip()]
+
+
 def load_policies(sector=None, region=None, search=None, status=None):
     conn = get_connection()
     query = "SELECT * FROM policies WHERE 1=1"
@@ -133,7 +168,7 @@ def load_policies(sector=None, region=None, search=None, status=None):
     result = []
     for row in rows:
         p = dict(row)
-        p["tags"] = json.loads(p["tags"] or "[]")
+        p["tags"] = _parse_tags(p.get("tags"))
         p["tags"] = rank_tags_by_frequency(p)
 
         cached = _get_cached_countries(p["id"], conn)
@@ -160,7 +195,7 @@ def get_policy_by_id(policy_id: str):
         return None
 
     p = dict(row)
-    p["tags"] = json.loads(p["tags"] or "[]")
+    p["tags"] = _parse_tags(p.get("tags"))
     p["tags"] = rank_tags_by_frequency(p)
 
     # Check cache first

@@ -7,11 +7,15 @@ from app.auth import (
 from app.database import get_connection
 from app.email_service import send_reset_email
 from app.models.schemas import (
-    RegisterRequest, LoginRequest,
+    RegisterRequest, LoginRequest, GoogleLoginRequest,
     ForgotPasswordRequest, ResetPasswordRequest,
     TokenResponse, UserOut
 )
 from datetime import datetime
+import urllib.request
+import json
+import os
+import secrets
 
 router = APIRouter()
 
@@ -163,3 +167,56 @@ def get_history(current_user: dict = Depends(get_current_user)):
 @router.post("/logout")
 def logout():
     return {"message": "Logged out successfully"}
+
+# ── Google Login / Signup ───────────────────────────────────────────────────
+@router.post("/google", response_model=TokenResponse)
+def login_with_google(req: GoogleLoginRequest):
+    credential = req.credential
+    if not credential:
+        raise HTTPException(status_code=400, detail="Missing Google credential token.")
+
+    # 1. Fetch Google Tokeninfo securely via official Google APIs
+    try:
+        url = f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
+        request_obj = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(request_obj, timeout=5) as response:
+            if response.status != 200:
+                raise HTTPException(status_code=400, detail="Failed to verify Google token against OAuth provider.")
+            id_info = json.loads(response.read().decode("utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Google authentication request failed: {str(e)}")
+
+    # 2. Extract profile fields safely
+    email = id_info.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Google token does not contain an email address.")
+    email = email.lower()
+    full_name = id_info.get("name", "Google User").strip()
+
+    # 3. Check if user already exists in system database
+    user = get_user_by_email(email)
+
+    conn = get_connection()
+    if not user:
+        # 4. Auto-register new Google user with high-entropy randomized password hash
+        fake_pass_hash = hash_password(secrets.token_hex(16))
+        cur = conn.execute(
+            "INSERT INTO users (email, full_name, password_hash, role) VALUES (%s, %s, %s, %s) RETURNING id, email, full_name, role, created_at",
+            (email, full_name, fake_pass_hash, "user")
+        )
+        user = dict(cur.fetchone())
+        conn.commit()
+    conn.close()
+
+    # 5. Create system token
+    token = create_access_token({"sub": str(user["id"]), "role": user["role"]})
+    return TokenResponse(
+        access_token=token,
+        user=UserOut(
+            id=user["id"],
+            email=user["email"],
+            full_name=user["full_name"],
+            role=user["role"],
+            created_at=user.get("created_at") or datetime.utcnow()
+        )
+    )

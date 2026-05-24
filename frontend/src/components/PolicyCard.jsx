@@ -9,8 +9,8 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
 
   // Accent and Selected states styling
   const isSelected = selected;
-  const cardBorder = isSelected ? "1px solid #5c9e2e" : "1px solid #e8e8e8";
-  const cardBg = isSelected ? "rgba(92,158,46,0.04)" : "#ffffff";
+  const cardBorder = isSelected ? "1px solid var(--cyan)" : "1px solid var(--border)";
+  const cardBg = isSelected ? "var(--bg-hover)" : "var(--bg-card)";
 
   // Standard tags array: extract up to 3 tags
   const tagsToShow = policy.tags && Array.isArray(policy.tags) && policy.tags.length > 0
@@ -44,15 +44,15 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
             width: 36,
             height: 36,
             borderRadius: "6px",
-            background: "#f5f5f5",
-            border: "1px solid #e8e8e8",
+            background: "var(--bg-hover)",
+            border: "1px solid var(--border)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontFamily: "'DM Sans', sans-serif",
             fontSize: "14px",
             fontWeight: 600,
-            color: "#6b7280",
+            color: "var(--text-muted)",
             flexShrink: 0
           }}>
             {letter}
@@ -64,7 +64,7 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
               fontFamily: "'DM Sans', sans-serif",
               fontSize: "14px",
               fontWeight: 500,
-              color: "#0a0a0a",
+              color: "var(--text-main)",
               lineHeight: 1.35,
               display: "-webkit-box",
               WebkitLineClamp: 2,
@@ -76,7 +76,7 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
             <div style={{
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: "10px",
-              color: "#9ca3af",
+              color: "var(--text-dim)",
               letterSpacing: "0.06em",
               textTransform: "uppercase"
             }}>
@@ -112,7 +112,7 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
       <div style={{
         fontFamily: "'DM Sans', sans-serif",
         fontSize: "13px",
-        color: "#6b7280",
+        color: "var(--text-muted)",
         lineHeight: 1.55,
         marginTop: "12px",
         display: "-webkit-box",
@@ -132,12 +132,12 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
           display: "flex",
           alignItems: "center",
           gap: 5,
-          border: "1px solid #e8e8e8",
+          border: "1px solid var(--border)",
           borderRadius: "20px",
           padding: "3px 10px",
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: "10px",
-          color: "#6b7280",
+          color: "var(--text-muted)",
           letterSpacing: "0.04em",
           textTransform: "uppercase"
         }}>
@@ -145,7 +145,7 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
             width: 4,
             height: 4,
             borderRadius: "50%",
-            background: "#9ca3af",
+            background: "var(--text-dim)",
             display: "inline-block"
           }} />
           {policy.country || "GLOBAL"}
@@ -154,12 +154,12 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
         {/* Year pill */}
         {policy.year && (
           <div style={{
-            border: "1px solid #e8e8e8",
+            border: "1px solid var(--border)",
             borderRadius: "20px",
             padding: "3px 10px",
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: "10px",
-            color: "#6b7280",
+            color: "var(--text-muted)",
             letterSpacing: "0.04em",
             textTransform: "uppercase"
           }}>
@@ -189,7 +189,7 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
       {!selectable && (
         <div style={{
           marginTop: "16px",
-          borderTop: "1px solid #f0f0f0",
+          borderTop: "1px solid var(--border)",
           paddingTop: "12px",
           display: "flex",
           justifyContent: "space-between",
@@ -198,14 +198,14 @@ export default function PolicyCard({ policy, delay = 1, selectable, selected, on
           <span className="view-policy-text" style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: "11px",
-            color: "#9ca3af",
+            color: "var(--text-dim)",
             letterSpacing: "0.08em",
             transition: "color 0.15s ease"
           }}>
             VIEW POLICY
           </span>
           <ExternalLink className="view-policy-arrow" size={11} style={{
-            color: "#9ca3af",
+            color: "var(--text-dim)",
             transition: "color 0.15s ease"
           }} />
         </div>

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Globe2, Lock, User, Eye, EyeOff, Mail, ArrowLeft, CheckCircle } from "lucide-react";
-import { loginUser, registerUser, forgotPassword } from "../services/api";
+import { loginUser, registerUser, forgotPassword, loginWithGoogle } from "../services/api";
 
 // ── Reusable input wrapper ─────────────────────────────────────────────────
 function InputField({ icon: Icon, type = "text", value, onChange, placeholder, required, rightSlot }) {
@@ -283,6 +283,80 @@ function ForgotForm({ onBack }) {
 // ── Main Export ────────────────────────────────────────────────────────────
 export default function Login({ onLogin }) {
   const [view, setView] = useState("login"); // "login" | "register" | "forgot"
+  const [googleError, setGoogleError] = useState(null);
+
+  const handleGoogleCredentialResponse = async (response) => {
+    try {
+      setGoogleError(null);
+      const data = await loginWithGoogle(response.credential);
+      localStorage.setItem("token", data.access_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      onLogin(data.user);
+    } catch (err) {
+      setGoogleError(err.message || "Google authentication failed.");
+    }
+  };
+
+  useEffect(() => {
+    if (view === "forgot") return;
+
+    const renderGoogleBtn = () => {
+      if (window.google && window.google.accounts) {
+        const clientID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "779080463690-hpquule4nc3ctn6if2s8kbt4k521mhqa.apps.googleusercontent.com";
+        
+        window.google.accounts.id.initialize({
+          client_id: clientID,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        const btnDiv = document.getElementById("google-signin-btn");
+        if (btnDiv) {
+          window.google.accounts.id.renderButton(btnDiv, {
+            theme: "outline",
+            size: "large",
+            width: btnDiv.offsetWidth || 348,
+            text: view === "login" ? "signin_with" : "signup_with",
+            shape: "rectangular",
+            logo_alignment: "left",
+          });
+        }
+        window.google.accounts.id.prompt();
+      }
+    };
+
+    // 1. If script is already loaded and ready, render immediately
+    if (document.getElementById("google-gsi-script") && window.google) {
+      renderGoogleBtn();
+      return;
+    }
+
+    // 2. Otherwise, check or dynamically load the script
+    let script = document.getElementById("google-gsi-script");
+    if (!script) {
+      script = document.createElement("script");
+      script.id = "google-gsi-script";
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+
+    script.onload = () => {
+      renderGoogleBtn();
+    };
+
+    // Fallback polling check in case script is already loading or cached
+    const interval = setInterval(() => {
+      if (window.google && window.google.accounts) {
+        renderGoogleBtn();
+        clearInterval(interval);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [view]);
 
   const titles = {
     login:    { heading: "Welcome back",      sub: "Sign in to your PolicyIQ account" },
@@ -326,9 +400,27 @@ export default function Login({ onLogin }) {
             <p style={{ color: "var(--text-muted)", fontSize: 12 }}>{sub}</p>
           </div>
 
+          <ErrorBanner msg={googleError} />
+
           {view === "login"    && <LoginForm    onLogin={onLogin} onForgot={() => setView("forgot")} onSwitch={() => setView("register")} />}
           {view === "register" && <RegisterForm onLogin={onLogin} onSwitch={() => setView("login")} />}
           {view === "forgot"   && <ForgotForm   onBack={() => setView("login")} />}
+
+          {(view === "login" || view === "register") && (
+            <>
+              <div style={{ margin: "20px 0", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+                <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "JetBrains Mono", letterSpacing: "0.05em" }}>
+                  OR CONTINUE WITH
+                </span>
+                <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <div id="google-signin-btn" style={{ width: "100%", minHeight: "40px" }}></div>
+              </div>
+            </>
+          )}
         </div>
 
         <p style={{ textAlign: "center", color: "var(--text-dim)", fontSize: 11, marginTop: 20 }}>

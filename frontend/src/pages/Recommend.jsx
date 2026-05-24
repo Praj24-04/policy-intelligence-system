@@ -51,7 +51,7 @@ export default function Recommend() {
     <div style={{
       flex: 1,
       overflowY: "auto",
-      background: "#ffffff",
+      background: "var(--bg-deep)",
       minHeight: "100vh"
     }}>
       <div style={{

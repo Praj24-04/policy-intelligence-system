@@ -1,11 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { fetchPolicies, comparePolicies } from "../services/api";
-import PolicyCard from "../components/PolicyCard";
 import SectorBadge from "../components/SectorBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { GitCompare, CheckCircle2, XCircle, Lightbulb, RotateCcw } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { GitCompare, CheckCircle2, XCircle, Lightbulb, RotateCcw, FileDown } from "lucide-react";
 
 export default function Compare() {
   const [policies,     setPolicies]     = useState([]);
@@ -16,7 +13,7 @@ export default function Compare() {
   const [step,         setStep]         = useState(1);
   const [sectorFilter, setSectorFilter] = useState("");
 
-  // Removed reportRef since we use jsPDF autoTable natively
+  const reportRef = useRef(null);
 
   useEffect(() => {
     fetchPolicies(sectorFilter ? { sector: sectorFilter } : {}).then(d => {
@@ -25,8 +22,10 @@ export default function Compare() {
   }, [sectorFilter]);
 
   const handleSelect = (policy) => {
-    if (step === 1) { setSel1(policy); setStep(2); }
-    else if (step === 2 && policy.id !== sel1.id) {
+    if (step === 1) {
+      setSel1(policy);
+      setStep(2);
+    } else if (step === 2 && policy.id !== sel1.id) {
       setSel2(policy);
       setLoading(true);
       comparePolicies(sel1.id, policy.id).then(r => {
@@ -37,531 +36,1400 @@ export default function Compare() {
     }
   };
 
-  const reset = () => { setSel1(null); setSel2(null); setResult(null); setStep(1); };
-
-  const downloadReport = () => {
-    if (!result) return;
-    
-    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const p1 = result.policy_1;
-    const p2 = result.policy_2;
-
-    // Header bar
-    pdf.setFillColor(17, 24, 39);
-    pdf.rect(0, 0, 210, 20, "F");
-    pdf.setTextColor(34, 211, 238);
-    pdf.setFontSize(16);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("PolicyIQ — Policy Comparison Report", 14, 13);
-
-    // Timestamp
-    pdf.setTextColor(100, 116, 139);
-    pdf.setFontSize(9);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
-
-    let startY = 32;
-
-    // 1. Overview Table
-    autoTable(pdf, {
-      startY: startY,
-      head: [["Attribute", `Policy A: ${p1.title}`, `Policy B: ${p2.title}`]],
-      body: [
-        ["Sector", p1.sector || "N/A", p2.sector || "N/A"],
-        ["Jurisdiction", p1.country || "N/A", p2.country || "N/A"],
-        ["Region", p1.region || "N/A", p2.region || "N/A"],
-        ["Year", p1.year ? String(p1.year) : "N/A", p2.year ? String(p2.year) : "N/A"]
-      ],
-      theme: "grid",
-      headStyles: { fillColor: [17, 24, 39], textColor: [255, 255, 255], fontStyle: "bold" },
-      styles: { fontSize: 10, cellPadding: 4, lineColor: [226, 232, 240] },
-      columnStyles: { 0: { fontStyle: "bold", cellWidth: 30, fillColor: [248, 250, 252], textColor: [15, 23, 42] } }
-    });
-    
-    startY = pdf.lastAutoTable.finalY + 10;
-
-    // 2. Focus Areas & Tags Table
-    autoTable(pdf, {
-      startY: startY,
-      head: [["Focus Areas", "Tags / Topics"]],
-      body: [
-        ["Shared Focus", result.ml_metrics?.themes?.shared?.length ? result.ml_metrics.themes.shared.join(", ") : "None"],
-        ["Unique to Policy A", result.ml_metrics?.themes?.unique_1?.length ? result.ml_metrics.themes.unique_1.join(", ") : "None"],
-        ["Unique to Policy B", result.ml_metrics?.themes?.unique_2?.length ? result.ml_metrics.themes.unique_2.join(", ") : "None"]
-      ],
-      theme: "grid",
-      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: "bold" },
-      styles: { fontSize: 10, cellPadding: 4, lineColor: [226, 232, 240] },
-      columnStyles: { 0: { fontStyle: "bold", cellWidth: 40, fillColor: [248, 250, 252], textColor: [15, 23, 42] } }
-    });
-
-    startY = pdf.lastAutoTable.finalY + 10;
-
-    // 3. Regulatory Rubric Scores
-    if (p1.rubric && p2.rubric) {
-      autoTable(pdf, {
-        startY: startY,
-        head: [["Regulatory Dimension", `Policy A Score`, `Policy B Score`]],
-        body: [
-          ["Prescriptiveness (Binding)", `${p1.rubric.prescriptiveness}/100`, `${p2.rubric.prescriptiveness}/100`],
-          ["Rights Orientation", `${p1.rubric.rights_orientation}/100`, `${p2.rubric.rights_orientation}/100`],
-          ["Technical Specificity", `${p1.rubric.technical_specificity}/100`, `${p2.rubric.technical_specificity}/100`],
-          ["Enforcement Power", `${p1.rubric.enforcement_power}/100`, `${p2.rubric.enforcement_power}/100`]
-        ],
-        theme: "grid",
-        headStyles: { fillColor: [14, 116, 144], textColor: [255, 255, 255], fontStyle: "bold" },
-        styles: { fontSize: 10, cellPadding: 4, lineColor: [226, 232, 240] },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40, fillColor: [248, 250, 252], textColor: [15, 23, 42] } }
-      });
-      startY = pdf.lastAutoTable.finalY + 10;
-    }
-    
-    // 4. Verbatim Clause Gaps
-    if (result.ml_metrics?.clause_gaps) {
-        const gaps1 = result.ml_metrics.clause_gaps.orphaned_in_1 || [];
-        const gaps2 = result.ml_metrics.clause_gaps.orphaned_in_2 || [];
-        
-        if (gaps1.length > 0 || gaps2.length > 0) {
-            autoTable(pdf, {
-                startY: startY,
-                head: [["Orphaned Clauses (Policy A)", "Orphaned Clauses (Policy B)"]],
-                body: [
-                  [
-                    gaps1.map(g => `• ${g.text}`).join("\n\n") || "None",
-                    gaps2.map(g => `• ${g.text}`).join("\n\n") || "None"
-                  ]
-                ],
-                theme: "grid",
-                headStyles: { fillColor: [99, 102, 241], textColor: [255, 255, 255], fontStyle: "bold" },
-                styles: { fontSize: 9, cellPadding: 4, lineColor: [226, 232, 240] }
-            });
-            startY = pdf.lastAutoTable.finalY + 10;
-        }
-    }
-
-    // 5. Penalties & Fines (if any)
-    if (p1.penalty_fines?.has_fines || p2.penalty_fines?.has_fines) {
-      autoTable(pdf, {
-        startY: startY,
-        head: [["Penalties & Fines", "Details"]],
-        body: [
-          ["Policy A", p1.penalty_fines?.summary || "No specific fines mentioned."],
-          ["Policy B", p2.penalty_fines?.summary || "No specific fines mentioned."]
-        ],
-        theme: "grid",
-        headStyles: { fillColor: [244, 63, 94], textColor: [255, 255, 255], fontStyle: "bold" },
-        styles: { fontSize: 10, cellPadding: 4, lineColor: [254, 226, 226] },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 35, fillColor: [255, 241, 242], textColor: [225, 29, 72] } }
-      });
-      startY = pdf.lastAutoTable.finalY + 10;
-    }
-
-    // 4. AI-Generated Insights
-    if (result.insights?.length > 0) {
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(17, 24, 39);
-      pdf.text("AI-Generated Strategic Insights", 14, startY);
-      
-      const insightRows = result.insights.map(ins => ["•", ins]);
-      
-      autoTable(pdf, {
-        startY: startY + 4,
-        body: insightRows,
-        theme: "plain",
-        styles: { fontSize: 10, cellPadding: 2, textColor: [71, 85, 105] },
-        columnStyles: { 0: { cellWidth: 10, fontStyle: "bold", textColor: [34, 211, 238] } }
-      });
-    }
-
-    // Add Footer (Watermark & Page Numbers) to all pages
-    const pageCount = pdf.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      pdf.setPage(i);
-      pdf.setFont("helvetica", "italic");
-      pdf.setFontSize(9);
-      pdf.setTextColor(148, 163, 184); // slate-400
-      
-      // Left aligned watermark
-      pdf.text("PolicyIQ Intelligence Platform", 14, 287);
-      
-      // Right aligned page number
-      pdf.text(`Page ${i} of ${pageCount}`, 196, 287, { align: "right" });
-      
-      // Add a subtle top border for the footer
-      pdf.setDrawColor(226, 232, 240); // slate-200
-      pdf.line(14, 282, 196, 282);
-    }
-
-    // Save
-    const filename = `PolicyIQ_Comparison_${p1.id}_vs_${p2.id}.pdf`;
-    pdf.save(filename);
+  const reset = () => {
+    setSel1(null);
+    setSel2(null);
+    setResult(null);
+    setStep(1);
   };
+
+  const handleDownloadPDF = async () => {
+    const element = reportRef.current;
+    if (!element) return;
+    
+    // Dynamic import to avoid SSR / bundler load constraints
+    const html2pdf = (await import('html2pdf.js')).default;
+    
+    const p1Title = result.policy_1?.title || result.policy1?.title || "PolicyA";
+    const p2Title = result.policy_2?.title || result.policy2?.title || "PolicyB";
+
+    const filename = `PolicyIQ-Comparison-${p1Title
+      .slice(0, 20)
+      .replace(/[^a-z0-9]/gi, '-')}-vs-${p2Title
+      .slice(0, 20)
+      .replace(/[^a-z0-9]/gi, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`;
+    
+    const options = {
+      margin: [15, 15, 15, 15],
+      filename: filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2,
+        useCORS: true,
+        logging: false
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait'
+      },
+      pagebreak: { 
+        mode: ['avoid-all', 'css', 'legacy'],
+        before: '.pdf-page-break'
+      }
+    };
+    
+    await html2pdf().set(options).from(element).save();
+  };
+
+  // Sector filter list mapping
+  const filterMapping = [
+    { label: "All Sectors", value: "" },
+    { label: "AI Governance", value: "AI Governance" },
+    { label: "Cybersecurity", value: "Cybersecurity" },
+    { label: "Data Privacy", value: "Data Privacy" },
+    { label: "Financial Regulation", value: "Financial Regulation" },
+    { label: "Healthcare AI", value: "Healthcare AI" },
+    { label: "ESG", value: "ESG Policies" },
+    { label: "IoT", value: "IoT and Robotics" },
+    { label: "POSH", value: "POSH Policies" }
+  ];
+
+  // Helper section divider component
+  const SectionDivider = ({ label }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+      <div style={{ width: "20px", height: "1px", backgroundColor: "var(--border)" }} />
+      <span style={{
+        fontSize: "12px",
+        fontFamily: "JetBrains Mono",
+        color: "var(--text-muted)",
+        letterSpacing: "0.12em",
+        fontWeight: 500,
+        textTransform: "uppercase"
+      }}>
+        {label}
+      </span>
+      <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border)" }} />
+    </div>
+  );
 
   return (
     <div style={{
       flex: 1,
       overflowY: "auto",
-      background: "#ffffff",
+      background: "var(--bg-deep)",
       minHeight: "100vh"
     }}>
+      <style>{`
+        .policy-select-card:hover {
+          border-color: var(--border-lit) !important;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .action-btn-hover:hover {
+          background-color: var(--bg-hover) !important;
+          border-color: var(--border-lit) !important;
+        }
+        .reset-btn-hover:hover {
+          color: var(--text-main) !important;
+        }
+      `}</style>
+
       <div style={{
         maxWidth: "1200px",
         margin: "0 auto",
         padding: "32px 40px",
         width: "100%"
       }}>
-      <div className="fade-up" style={{ marginBottom: 32 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "JetBrains Mono", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 12 }}>
-              <span style={{ color: "var(--cyan)", marginRight: 8 }}>■</span> PREP / ANALYSIS
-            </div>
-            <h1 style={{ fontFamily: "Inter", fontSize: 44, fontWeight: 800, color: "var(--text-main)", letterSpacing: "-1px", marginBottom: 16 }}>
-              Compare frameworks <span className="half-highlight">side-by-side.</span>
-            </h1>
-            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
-              {step === 1
-                ? "Step 1 — Select first policy"
-                : step === 2
-                ? `Step 2 — Select second policy to compare with "${sel1?.title?.slice(0, 40)}..."`
-                : "Comparison complete"}
-            </p>
+        {/* PAGE HEADER (Always visible) */}
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--cyan)", backgroundColor: "var(--cyan)" }}></span>
+            <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)", letterSpacing: "0.05em" }}>
+              PREP / COMPARE
+            </span>
           </div>
-          {step > 1 && (
-            <button onClick={reset} style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: "var(--bg-card)", border: "1px solid var(--border)",
-              color: "var(--text-muted)", borderRadius: 8, padding: "8px 14px",
-              fontSize: 12, cursor: "pointer",
-            }}>
-              <RotateCcw size={12} /> Reset
-            </button>
-          )}
+          <h1 style={{ 
+            fontFamily: "'DM Sans', sans-serif", 
+            fontSize: "52px", 
+            fontWeight: 700, 
+            color: "var(--text-main)",
+            margin: "0 0 16px 0",
+            letterSpacing: "-1.5px",
+            lineHeight: "1.1"
+          }}>
+            Compare <span className="half-highlight-custom">policies.</span>
+          </h1>
+          <p style={{ fontFamily: "DM Sans", fontSize: "14px", color: "var(--text-muted)", margin: 0 }}>
+            Select two policies to generate a structured intelligence comparison report.
+          </p>
         </div>
-      </div>
 
-      {/* Step Indicator */}
-      <div className="fade-up fade-up-1" style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-        {["Select Policy A", "Select Policy B", "View Insights"].map((label, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "5px 14px", borderRadius: 20,
-              background: step > i ? "rgba(34,211,238,0.1)" : "var(--bg-card)",
-              border: `1px solid ${step > i ? "rgba(34,211,238,0.3)" : "var(--border)"}`,
-              color: step > i ? "var(--cyan)" : "var(--text-dim)",
-              fontSize: 12,
-            }}>
-              <span style={{ fontFamily: "JetBrains Mono", fontSize: 10 }}>0{i + 1}</span>
-              {label}
-            </div>
-            {i < 2 && <div style={{ width: 20, height: 1, background: "var(--border)" }} />}
-          </div>
-        ))}
-      </div>
+        {/* STEP INDICATOR (steps 1 and 2 only) */}
+        {step < 3 && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px" }}>
+            {[
+              { num: "01", label: "Select Policy A", stepNum: 1 },
+              { num: "02", label: "Select Policy B", stepNum: 2 },
+              { num: "03", label: "View Report", stepNum: 3 }
+            ].map((s, idx) => {
+              const isActive = step === s.stepNum;
+              const isCompleted = step > s.stepNum;
 
-      {step === 3 && result && !loading && (
-        <div className="fade-up" style={{ marginBottom: 24 }}>
-          {/* Comparison View */}
-          <div>
+              let bg = "var(--bg-card)";
+              let border = "1px solid var(--border)";
+              let color = "var(--text-dim)";
+              let weight = "normal";
 
-            {/* Premium V2 Overall Similarity Banner */}
-            {result.overall_metrics && (
-              <div className="card" style={{
-                padding: "20px 24px", marginBottom: 20,
-                background: "linear-gradient(135deg, rgba(34,211,238,0.06) 0%, rgba(129,140,248,0.06) 100%)",
-                borderColor: "rgba(34,211,238,0.25)",
-                textAlign: "center"
-              }}>
-                <div style={{ fontSize: 10, color: "var(--cyan)", fontFamily: "JetBrains Mono", marginBottom: 6, letterSpacing: "1px" }}>
-                  COMPOSITE REGULATORY ALIGNMENT
-                </div>
-                <div style={{ fontFamily: "Syne", fontWeight: 800, fontSize: 50, color: "var(--cyan)", lineHeight: 1.1 }}>
-                  {Math.round(result.overall_metrics.composite_score * 100)}%
-                </div>
-                <div style={{ fontSize: 13, fontFamily: "Inter", fontWeight: 700, color: "var(--text-main)", marginTop: 6, letterSpacing: "0.5px" }}>
-                  {result.overall_metrics.similarity_label}
-                </div>
-                
-                <div style={{ display: "flex", justifyContent: "center", gap: 32, marginTop: 16, borderTop: "1px dashed var(--border)", paddingTop: 14 }}>
-                  {[
-                    { label: "Semantic Sim.", val: result.overall_metrics.semantic_similarity },
-                    { label: "Cross-Encoder (Sigmoid)", val: result.overall_metrics.cross_encoder_normalized },
-                    { label: "Jaccard Tag Sim.", val: result.overall_metrics.jaccard_coefficient }
-                  ].map(metric => (
-                    <div key={metric.label}>
-                      <div style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "JetBrains Mono", marginBottom: 4 }}>
-                        {metric.label}
-                      </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-main)", fontFamily: "JetBrains Mono" }}>
-                        {Math.round(metric.val * 100)}%
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              if (isActive) {
+                border = "1px solid var(--text-main)";
+                color = "var(--text-main)";
+                weight = "600";
+              } else if (isCompleted) {
+                border = "1px solid var(--cyan)";
+                bg = "var(--accent-light)";
+                color = "var(--stat-label)";
+              }
 
-            {/* Policy Cards Side by Side */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-              {[(result.policy1 || result.policy_1), (result.policy2 || result.policy_2)].map((p, i) => {
-                if (!p) return null;
-                return (
-                  <div key={i} className="card" style={{
-                    padding: "18px 22px",
-                    borderColor: i === 0 ? "#818cf8" : "var(--cyan)"
+              return (
+                <div key={idx} style={{ display: "flex", alignItems: "center" }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "5px 14px",
+                    borderRadius: "20px",
+                    background: bg,
+                    backgroundColor: bg,
+                    border: border,
+                    color: color,
+                    fontSize: "12px",
+                    fontFamily: "DM Sans",
+                    fontWeight: weight
                   }}>
-                    <div style={{ fontSize: 10, fontFamily: "JetBrains Mono", color: i === 0 ? "#818cf8" : "var(--cyan)", marginBottom: 8 }}>
-                      POLICY {i === 0 ? "A" : "B"}
-                    </div>
-                    <div style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 8 }}>
-                      {p.title}
-                    </div>
-                    <SectorBadge sector={p.sector} />
-                    <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--text-muted)" }}>
-                      <span>{p.country}</span>
-                      <span>{p.year}</span>
-                      <span>{p.region}</span>
-                    </div>
-
-                    {/* Approach */}
-                    {p.approach && (
-                      <div style={{ marginTop: 8 }}>
-                        <span style={{
-                          fontSize: 10, padding: "2px 7px", borderRadius: 4,
-                          background: "rgba(245,158,11,0.08)", color: "#f59e0b",
-                          border: "1px solid rgba(245,158,11,0.2)", fontFamily: "JetBrains Mono"
-                        }}>
-                          {p.approach} Approach
-                        </span>
-                      </div>
+                    {isCompleted ? (
+                      <span style={{ fontSize: "10px", fontWeight: "bold" }}>✓</span>
+                    ) : (
+                      <span style={{ fontFamily: "JetBrains Mono", fontSize: "9px" }}>{s.num}</span>
                     )}
-
-                    {/* Tags */}
-                    {p.tags?.length > 0 && (
-                      <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {p.tags.slice(0, 5).map(t => (
-                          <span key={t} style={{
-                            fontSize: 10, padding: "2px 7px", borderRadius: 4,
-                            background: "var(--bg-hover)", color: "var(--text-muted)",
-                            border: "1px solid var(--border)", fontFamily: "JetBrains Mono"
-                          }}>
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <span>{s.label}</span>
                   </div>
+                  {idx < 2 && (
+                    <div style={{ width: "24px", height: "1px", borderTop: "1px solid var(--border)", margin: "0 8px" }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* SECTOR FILTER + POLICY GRID (steps 1 & 2) */}
+        {step < 3 && (
+          <>
+            {/* Filter pills row */}
+            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
+              {filterMapping.map(f => {
+                const isActive = sectorFilter === f.value;
+                return (
+                  <button
+                    key={f.label}
+                    onClick={() => setSectorFilter(f.value)}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontFamily: "DM Sans",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      outline: "none",
+                      border: isActive ? "1px solid var(--cyan)" : "none",
+                      background: isActive ? "var(--accent-light)" : "transparent",
+                      backgroundColor: isActive ? "var(--accent-light)" : "transparent",
+                      color: isActive ? "var(--stat-label)" : "var(--text-dim)"
+                    }}
+                  >
+                    {f.label}
+                  </button>
                 );
               })}
+ 
+              {/* Policy count */}
+              <div style={{ marginLeft: "auto", fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>
+                Showing {policies.length} policies
+              </div>
             </div>
 
-            {/* 6-Dimensional Analysis Grid */}
-            {result.dimensional_breakdown && (
-              <div className="card" style={{ padding: "20px 24px", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: "var(--cyan)", fontFamily: "JetBrains Mono", marginBottom: 14, letterSpacing: "0.5px" }}>
-                  6-DIMENSIONAL REGULATORY ANALYSIS
+            {/* SELECTION SUMMARY BAR (appears after step 1) */}
+            {step > 1 && sel1 && (
+              <div style={{
+                padding: "10px 16px",
+                background: "var(--bg-hover)",
+                backgroundColor: "var(--bg-hover)",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                marginBottom: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "16px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>POLICY A:</span>
+                  <span style={{ fontSize: "12px", fontFamily: "DM Sans", color: "var(--text-main)" }}>{sel1.title}</span>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#2563eb", backgroundColor: "#2563eb" }}></span>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  {Object.entries(result.dimensional_breakdown).map(([dimName, info]) => (
-                    <div key={dimName} style={{ background: "rgba(255,255,255,0.015)", border: "1px solid var(--border)", borderRadius: 8, padding: "12px 16px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-main)", textTransform: "capitalize" }}>
-                          {dimName}
-                        </span>
-                        <span style={{ fontSize: 10, fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>
-                          Gap: {Math.round(info.gap * 100)}% (Dom: {info.dominant === "policy1" ? "Policy A" : "Policy B"})
-                        </span>
-                      </div>
-                      
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {/* Policy A Strength Bar */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 10, width: 50, color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>Policy A</span>
-                          <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3 }}>
-                            <div style={{ width: `${Math.round(info.strength_policy1 * 100)}%`, height: "100%", background: "#818cf8", borderRadius: 3 }} />
-                          </div>
-                          <span style={{ fontSize: 10, color: "#818cf8", width: 35, fontFamily: "JetBrains Mono", textAlign: "right" }}>
-                            {Math.round(info.strength_policy1 * 100)}%
-                          </span>
-                        </div>
-                        {/* Policy B Strength Bar */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 10, width: 50, color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>Policy B</span>
-                          <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3 }}>
-                            <div style={{ width: `${Math.round(info.strength_policy2 * 100)}%`, height: "100%", background: "var(--cyan)", borderRadius: 3 }} />
-                          </div>
-                          <span style={{ fontSize: 10, color: "var(--cyan)", width: 35, fontFamily: "JetBrains Mono", textAlign: "right" }}>
-                            {Math.round(info.strength_policy2 * 100)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ width: "1px", height: "16px", background: "var(--border)", backgroundColor: "var(--border)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>POLICY B:</span>
+                  {sel2 ? (
+                    <>
+                      <span style={{ fontSize: "12px", fontFamily: "DM Sans", color: "var(--text-main)" }}>{sel2.title}</span>
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--cyan)", backgroundColor: "var(--cyan)" }}></span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: "12px", fontFamily: "DM Sans", color: "var(--text-dim)", fontStyle: "italic" }}>
+                      Select from grid below
+                    </span>
+                  )}
                 </div>
+                <button
+                  onClick={reset}
+                  className="reset-btn-hover"
+                  style={{
+                    marginLeft: "auto",
+                    background: "none",
+                    border: "none",
+                    fontSize: "10px",
+                    fontFamily: "JetBrains Mono",
+                    color: "var(--text-dim)",
+                    cursor: "pointer",
+                    outline: "none",
+                    padding: 0
+                  }}
+                >
+                  ↺ RESET
+                </button>
               </div>
             )}
 
-            {/* Tag Gap Analysis */}
-            {(result.shared_tags || result.only_policy1_tags || result.only_policy2_tags) && (
-              <div className="card" style={{ padding: "20px 24px", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: "var(--cyan)", fontFamily: "JetBrains Mono", marginBottom: 14, letterSpacing: "0.5px" }}>
-                  TAG GAP CLOUD ANALYSIS
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                  {/* Shared Tags */}
-                  <div style={{ background: "rgba(16,185,129,0.01)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 8, padding: "12px 14px" }}>
-                    <div style={{ fontSize: 10, color: "#10b981", fontWeight: 700, fontFamily: "JetBrains Mono", marginBottom: 10 }}>
-                      SHARED FOCUS TAGS ({result.shared_tags?.length || 0})
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                      {result.shared_tags?.length > 0 ? (
-                        result.shared_tags.map(t => (
-                          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "rgba(16,185,129,0.08)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>
-                            {t}
-                          </span>
-                        ))
-                      ) : (
-                        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>No shared focus tags</span>
+            {/* Policy selection grid */}
+            <div style={{ maxHeight: "520px", overflowY: "auto", paddingRight: "4px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+                {policies.map((p) => {
+                  const isSelectedA = sel1?.id === p.id;
+                  const isSelectedB = sel2?.id === p.id;
+
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => handleSelect(p)}
+                      className="policy-select-card"
+                      style={{
+                        position: "relative",
+                        background: "var(--bg-card)",
+                        border: isSelectedA 
+                          ? "2px solid #2563eb" 
+                          : isSelectedB 
+                          ? "2px solid #5c9e2e" 
+                          : "1px solid var(--border)",
+                        backgroundColor: isSelectedA
+                          ? "rgba(37,99,235,0.05)"
+                          : isSelectedB
+                          ? "rgba(163,230,53,0.05)"
+                          : "var(--bg-card)",
+                        borderRadius: "8px",
+                        padding: "14px 16px",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        minHeight: "110px"
+                      }}
+                    >
+                      {/* Selection Badge A/B top-left corner */}
+                      {isSelectedA && (
+                        <div style={{
+                          position: "absolute",
+                          top: "-6px",
+                          left: "-6px",
+                          width: "14px",
+                          height: "14px",
+                          borderRadius: "50%",
+                          background: "#2563eb",
+                          backgroundColor: "#2563eb",
+                          color: "#ffffff",
+                          fontSize: "8px",
+                          fontWeight: "bold",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}>
+                          A
+                        </div>
                       )}
+                      {isSelectedB && (
+                        <div style={{
+                          position: "absolute",
+                          top: "-6px",
+                          left: "-6px",
+                          width: "14px",
+                          height: "14px",
+                          borderRadius: "50%",
+                          background: "#5c9e2e",
+                          backgroundColor: "#5c9e2e",
+                          color: "#ffffff",
+                          fontSize: "8px",
+                          fontWeight: "bold",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}>
+                          B
+                        </div>
+                      )}
+
+                      {/* Top Row */}
+                      <div style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px" }}>
+                        {/* Avatar */}
+                        <div style={{
+                          width: "28px",
+                          height: "28px",
+                          borderRadius: "50%",
+                          background: "var(--bg-hover)",
+                          backgroundColor: "var(--bg-hover)",
+                          color: "var(--text-main)",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          fontFamily: "DM Sans",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0
+                        }}>
+                          {p.title ? p.title.charAt(0).toUpperCase() : "P"}
+                        </div>
+                        
+                        {/* Title */}
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            fontSize: "13px",
+                            fontWeight: "500",
+                            color: "var(--text-main)",
+                            fontFamily: "DM Sans",
+                            lineHeight: "1.35",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden"
+                          }}>
+                            {p.title}
+                          </div>
+                        </div>
+
+                        {/* Sector badge top-right */}
+                        <div style={{
+                          fontSize: "9px",
+                          fontFamily: "JetBrains Mono",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          color: "var(--stat-label)",
+                          background: "var(--accent-light)",
+                          backgroundColor: "var(--accent-light)",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          whiteSpace: "nowrap"
+                        }}>
+                          <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--cyan)", backgroundColor: "var(--cyan)" }}></span>
+                          {p.sector ? p.sector.slice(0, 10) : "General"}
+                        </div>
+                      </div>
+
+                      {/* Bottom Row */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)", textTransform: "uppercase" }}>
+                          {p.country || "GLOBAL"}
+                        </span>
+                        <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>
+                          {p.year || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* LOADING STATE */}
+        {loading && (
+          <div style={{ textAlign: "center", padding: "60px 0" }}>
+            <LoadingSpinner />
+            <div style={{ fontFamily: "DM Sans", fontSize: "13px", color: "var(--text-muted)", marginTop: "14px" }}>
+              Generating comparison report...
+            </div>
+            <div style={{ fontFamily: "JetBrains Mono", fontSize: "11px", color: "var(--text-dim)", marginTop: "6px" }}>
+              Analyzing {sel1?.title} against {sel2?.title}
+            </div>
+          </div>
+        )}
+
+        {/* COMPARISON REPORT (step 3 — full output) */}
+        {step === 3 && result && !loading && (
+          <div
+            ref={reportRef}
+            id="comparison-report"
+            style={{
+              maxWidth: "900px",
+              margin: "0 auto",
+              background: "var(--bg-card)"
+            }}
+          >
+            {/* SECTION 0 — REPORT HEADER */}
+            <div className="pdf-section" style={{ pageBreakInside: "avoid", marginBottom: "28px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontSize: "9px", fontFamily: "JetBrains Mono", color: "var(--text-dim)", letterSpacing: "0.12em", fontWeight: "bold" }}>
+                    POLICY COMPARISON REPORT
+                  </div>
+                  <div style={{ fontSize: "11px", fontFamily: "DM Sans", color: "var(--text-dim)", marginTop: "4px" }}>
+                    {new Date().toLocaleDateString('en-US', {
+                      year: 'numeric', month: 'long', day: 'numeric'
+                    })}
+                  </div>
+                </div>
+                
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    onClick={reset}
+                    className="action-btn-hover"
+                    style={{
+                      border: "1px solid var(--border)",
+                      background: "#ffffff",
+                      backgroundColor: "#ffffff",
+                      color: "var(--text-muted)",
+                      fontSize: "12px",
+                      fontFamily: "DM Sans",
+                      padding: "8px 14px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      outline: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    ↺ New Comparison
+                  </button>
+                  <button
+                    onClick={handleDownloadPDF}
+                    style={{
+                      background: "#0a0a0a",
+                      backgroundColor: "#0a0a0a",
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      fontFamily: "DM Sans",
+                      fontWeight: 600,
+                      padding: "8px 16px",
+                      letterSpacing: "0.02em",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      outline: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      border: "none"
+                    }}
+                  >
+                    <FileDown size={12} /> Download PDF
+                  </button>
+                </div>
+              </div>
+              <div style={{ height: "1px", borderTop: "1px solid var(--border)", marginTop: "16px" }} />
+            </div>
+
+            {/* SECTION 1 — ORIENTATION (Policy Cards) */}
+            <div className="pdf-section" style={{ pageBreakInside: "avoid", marginBottom: "28px" }}>
+              <SectionDivider label="01 ORIENTATION" />
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                {[(result.policy1 || result.policy_1), (result.policy2 || result.policy_2)].map((p, idx) => {
+                  if (!p) return null;
+                  const isA = idx === 0;
+
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: "22px 28px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                        borderTop: `3px solid ${isA ? "#2563eb" : "#5c9e2e"}`
+                      }}
+                    >
+                      <div style={{
+                        fontSize: "11px",
+                        fontFamily: "JetBrains Mono",
+                        color: isA ? "#2563eb" : "#5c9e2e",
+                        marginBottom: "8px",
+                        fontWeight: "600",
+                        letterSpacing: "0.14em"
+                      }}>
+                        POLICY {isA ? "A" : "B"}
+                      </div>
+                      <h3 style={{
+                        fontFamily: "DM Sans",
+                        fontSize: "16px",
+                        fontWeight: 600,
+                        color: "var(--text-main)",
+                        margin: "0 0 6px 0",
+                        lineHeight: 1.3
+                      }}>
+                        {p.title}
+                      </h3>
+                      
+                      <div style={{ marginBottom: "12px" }}>
+                        <SectorBadge sector={p.sector} />
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        {[
+                          { label: "Jurisdiction", val: p.country },
+                          { label: "Year Enacted", val: p.year },
+                          { label: "Region", val: p.region },
+                          { label: "Status", val: p.status || "Active" },
+                          { label: "Version", val: p.version || "1.0" }
+                        ].map((row, rIdx) => (
+                          <div
+                            key={rIdx}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              padding: "6px 0",
+                              borderBottom: rIdx < 4 ? "1px solid #eeeeee" : "none"
+                            }}
+                          >
+                            <span style={{
+                              fontSize: "12px",
+                              fontFamily: "JetBrains Mono",
+                              color: "var(--text-muted)",
+                              fontWeight: 400,
+                              textTransform: "uppercase"
+                            }}>
+                              {row.label}
+                            </span>
+                            <span style={{
+                              fontSize: "14px",
+                              fontFamily: "DM Sans",
+                              fontWeight: 500,
+                              color: "var(--text-main)"
+                            }}>
+                              {row.val || "N/A"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {p.source_url && (
+                        <div style={{ marginTop: "12px" }}>
+                          <a
+                            href={p.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              fontSize: "10px",
+                              fontFamily: "JetBrains Mono",
+                              color: "#5c9e2e",
+                              textDecoration: "none"
+                            }}
+                          >
+                            View Source ↗
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SECTION 2 — VERDICT */}
+            <div className="pdf-section" style={{ pageBreakInside: "avoid", marginBottom: "28px" }}>
+              <SectionDivider label="02 SIMILARITY VERDICT" />
+
+              <div style={{
+                padding: "22px 28px",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                display: "flex",
+                gap: "24px"
+              }}>
+                {/* Left Side (35%) */}
+                <div style={{ width: "35%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: "48px", fontFamily: "DM Sans", fontWeight: 700, color: "var(--text-main)", lineHeight: 1 }}>
+                      {Math.round((result.overall_metrics?.composite_score || 0) * 100)}%
+                    </div>
+                    <div style={{ fontSize: "15px", fontFamily: "DM Sans", fontWeight: 600, color: "#5c9e2e", marginTop: "6px" }}>
+                      {result.overall_metrics?.similarity_label || "Moderately Aligned"}
                     </div>
                   </div>
                   
-                  {/* Only Policy A Tags */}
-                  <div style={{ background: "rgba(129,140,248,0.01)", border: "1px solid rgba(129,140,248,0.15)", borderRadius: 8, padding: "12px 14px" }}>
-                    <div style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, fontFamily: "JetBrains Mono", marginBottom: 10 }}>
-                      UNIQUE TO POLICY A ({result.only_policy1_tags?.length || 0})
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                      {result.only_policy1_tags?.length > 0 ? (
-                        result.only_policy1_tags.map(t => (
-                          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "rgba(129,140,248,0.08)", color: "#818cf8", border: "1px solid rgba(129,140,248,0.2)" }}>
-                            {t}
-                          </span>
-                        ))
-                      ) : (
-                        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>No unique tags</span>
-                      )}
+                  {/* Score bar */}
+                  <div style={{ marginTop: "16px" }}>
+                    <div style={{ width: "100%", height: "4px", background: "#f0f0f0", borderRadius: "2px", overflow: "hidden" }}>
+                      <div style={{
+                        width: `${Math.round((result.overall_metrics?.composite_score || 0) * 100)}%`,
+                        height: "100%",
+                        background: (result.overall_metrics?.composite_score || 0) > 0.8 
+                          ? "#5c9e2e" 
+                          : (result.overall_metrics?.composite_score || 0) > 0.6 
+                          ? "#d97706" 
+                          : (result.overall_metrics?.composite_score || 0) > 0.4 
+                          ? "#2563eb" 
+                          : "#dc2626",
+                        borderRadius: "2px",
+                        transition: "width 0.8s ease"
+                      }} />
                     </div>
                   </div>
+                </div>
 
-                  {/* Only Policy B Tags */}
-                  <div style={{ background: "rgba(6,182,212,0.01)", border: "1px solid rgba(6,182,212,0.15)", borderRadius: 8, padding: "12px 14px" }}>
-                    <div style={{ fontSize: 10, color: "var(--cyan)", fontWeight: 700, fontFamily: "JetBrains Mono", marginBottom: 10 }}>
-                      UNIQUE TO POLICY B ({result.only_policy2_tags?.length || 0})
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                      {result.only_policy2_tags?.length > 0 ? (
-                        result.only_policy2_tags.map(t => (
-                          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, background: "rgba(6,182,212,0.08)", color: "var(--cyan)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                            {t}
-                          </span>
-                        ))
-                      ) : (
-                        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>No unique tags</span>
-                      )}
-                    </div>
+                {/* Divider */}
+                <div style={{ width: "1px", background: "var(--border)", backgroundColor: "var(--border)" }} />
+
+                {/* Right Side (65%) */}
+                <div style={{ width: "65%" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
+                    {[
+                      { label: "Semantic Similarity", val: result.overall_metrics?.semantic_similarity },
+                      { label: "Cross-Encoder Score", val: result.overall_metrics?.cross_encoder_normalized },
+                      { label: "Coverage Overlap", val: result.overall_metrics?.jaccard_coefficient }
+                    ].map((row, rIdx) => (
+                      <div key={rIdx} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span style={{ fontSize: "12px", fontFamily: "JetBrains Mono", color: "var(--text-muted)", width: "150px" }}>
+                          {row.label}
+                        </span>
+                        <div style={{ flex: 1, height: "4px", background: "var(--bg-hover)", borderRadius: "2px", overflow: "hidden" }}>
+                          <div style={{
+                            width: `${Math.round((row.val || 0) * 100)}%`,
+                            height: "100%",
+                            background: "#5c9e2e",
+                            backgroundColor: "#5c9e2e"
+                          }} />
+                        </div>
+                        <span style={{
+                          fontSize: "13px",
+                          fontFamily: "JetBrains Mono",
+                          fontWeight: 500,
+                          color: "var(--text-main)",
+                          width: "40px",
+                          textAlign: "right"
+                        }}>
+                          {Math.round((row.val || 0) * 100)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Summary Box */}
+                  <div style={{
+                    background: "var(--bg-hover)",
+                    backgroundColor: "var(--bg-hover)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "6px",
+                    padding: "12px 14px"
+                  }}>
+                    {(() => {
+                      const composite = result.overall_metrics?.composite_score || 0;
+                      let verdictText = "";
+                      if (composite > 0.8) verdictText = "These policies are nearly identical in approach and coverage. Compliance with one substantially satisfies the other.";
+                      else if (composite > 0.65) verdictText = "Strong alignment exists on core principles. Key differences lie in enforcement mechanisms and jurisdictional scope.";
+                      else if (composite > 0.5) verdictText = "Moderate overlap with meaningful divergence. Shared values but distinct implementation approaches reflect different regulatory contexts.";
+                      else if (composite > 0.35) verdictText = "Limited alignment. These policies address related domains but through fundamentally different frameworks and priorities.";
+                      else verdictText = "Distinct approaches. These policies represent contrasting regulatory philosophies and are best understood as complementary rather than comparable.";
+                      
+                      return (
+                        <p style={{
+                          fontSize: "14px",
+                          fontFamily: "DM Sans",
+                          color: "var(--text-muted)",
+                          margin: 0,
+                          lineHeight: 1.7
+                        }}>
+                          {verdictText}
+                        </p>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Page Break Hint */}
+            <div className="pdf-page-break" style={{ display: "none" }} />
+
+            {/* SECTION 3 — SHARED COVERAGE */}
+            {result.shared_tags?.length > 0 && (
+              <div className="pdf-section" style={{ pageBreakInside: "avoid", marginBottom: "28px" }}>
+                <SectionDivider label="03 SHARED COVERAGE" />
+                
+                <div style={{
+                  padding: "22px 28px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "12px", fontFamily: "DM Sans", color: "var(--text-muted)" }}>
+                      Both policies address these areas
+                    </span>
+                    <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>
+                      {result.shared_tags.length} shared themes
+                    </span>
+                  </div>
+
+                  <div style={{ height: "2px", background: "var(--border)", backgroundColor: "var(--border)", marginBottom: "14px" }} />
+
+                  {/* Pills */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {result.shared_tags.map((t, tIdx) => (
+                      <div
+                        key={tIdx}
+                        style={{
+                          background: "#f0f7e8",
+                          backgroundColor: "#f0f7e8",
+                          border: "1px solid rgba(92,158,46,0.25)",
+                          borderRadius: "4px",
+                          padding: "5px 12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}
+                      >
+                        <span style={{ color: "#5c9e2e", fontSize: "10px", fontWeight: "bold" }}>✓</span>
+                        <span style={{
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          letterSpacing: "0.06em",
+                          fontFamily: "JetBrains Mono",
+                          color: "#3d6b1e",
+                          textTransform: "uppercase"
+                        }}>
+                          {t}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Insight box */}
+                  <div style={{
+                    background: "var(--bg-hover)",
+                    backgroundColor: "var(--bg-hover)",
+                    border: "1px solid var(--border)",
+                    borderLeft: "3px solid #5c9e2e",
+                    borderRadius: "6px",
+                    padding: "10px 14px",
+                    marginTop: "14px"
+                  }}>
+                    <p style={{
+                      fontSize: "14px",
+                      fontFamily: "DM Sans",
+                      color: "var(--text-muted)",
+                      margin: 0,
+                      lineHeight: 1.7
+                    }}>
+                      Implementing these {result.shared_tags.length} areas satisfies overlapping obligations across both jurisdictions — reducing compliance duplication.
+                    </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Insights Panel */}
-            <div className="card" style={{ padding: "22px 26px", borderColor: "rgba(245,158,11,0.25)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                <Lightbulb size={15} color="#f59e0b" />
-                <span style={{ fontFamily: "Inter", fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>
-                  AI-Generated Strategic Insights
-                </span>
+            {/* SECTION 4 — COVERAGE GAPS */}
+            <div className="pdf-section" style={{ pageBreakInside: "avoid", marginBottom: "28px" }}>
+              <SectionDivider label="04 COVERAGE GAPS" />
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                {/* Left Column — Policy A */}
+                <div style={{
+                  border: "1px solid var(--border)",
+                  borderTop: "3px solid #2563eb",
+                  borderRadius: "0 0 8px 8px",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                  padding: "18px 20px"
+                }}>
+                  <div style={{
+                    fontSize: "11px",
+                    fontFamily: "JetBrains Mono",
+                    color: "#2563eb",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    letterSpacing: "0.14em"
+                  }}>
+                    UNIQUE TO POLICY A
+                  </div>
+                  <h4 style={{
+                    fontSize: "14px",
+                    fontFamily: "DM Sans",
+                    fontWeight: 600,
+                    color: "var(--text-main)",
+                    margin: "0 0 14px 0"
+                  }}>
+                    {(result.policy_1?.title || result.policy1?.title || "Policy A").slice(0, 30)}...
+                  </h4>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {result.only_policy1_tags?.length > 0 ? (
+                      result.only_policy1_tags.map((t, idx) => (
+                        <div key={idx} style={{ display: "flex", alignItems: "center", gap: "8px", borderLeft: "3px solid #bfdbfe", paddingLeft: "10px" }}>
+                          <span style={{
+                            fontSize: "13px",
+                            fontFamily: "DM Sans",
+                            fontWeight: 500,
+                            color: "#1f2937",
+                            textTransform: "capitalize"
+                          }}>
+                            {t}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <span style={{ fontSize: "12px", fontFamily: "DM Sans", fontStyle: "italic", color: "var(--text-dim)" }}>
+                        No unique provisions identified.
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column — Policy B */}
+                <div style={{
+                  border: "1px solid var(--border)",
+                  borderTop: "3px solid #5c9e2e",
+                  borderRadius: "0 0 8px 8px",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                  padding: "18px 20px"
+                }}>
+                  <div style={{
+                    fontSize: "11px",
+                    fontFamily: "JetBrains Mono",
+                    color: "#5c9e2e",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    letterSpacing: "0.14em"
+                  }}>
+                    UNIQUE TO POLICY B
+                  </div>
+                  <h4 style={{
+                    fontSize: "14px",
+                    fontFamily: "DM Sans",
+                    fontWeight: 600,
+                    color: "var(--text-main)",
+                    margin: "0 0 14px 0"
+                  }}>
+                    {(result.policy_2?.title || result.policy2?.title || "Policy B").slice(0, 30)}...
+                  </h4>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {result.only_policy2_tags?.length > 0 ? (
+                      result.only_policy2_tags.map((t, idx) => (
+                        <div key={idx} style={{ display: "flex", alignItems: "center", gap: "8px", borderLeft: "3px solid #bbf7d0", paddingLeft: "10px" }}>
+                          <span style={{
+                            fontSize: "13px",
+                            fontFamily: "DM Sans",
+                            fontWeight: 500,
+                            color: "#1f2937",
+                            textTransform: "capitalize"
+                          }}>
+                            {t}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <span style={{ fontSize: "12px", fontFamily: "DM Sans", fontStyle: "italic", color: "var(--text-dim)" }}>
+                        No unique provisions identified.
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Dynamic Insights list */}
-              {result.insights?.length > 0 ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                  {result.insights.map((insight, idx) => (
-                    <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
-                      <span style={{ color: "#f59e0b", fontWeight: 900, marginRight: 2 }}>•</span>
-                      <span>{insight}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 16 }}>
-                  No structural comparative insights loaded.
+              {/* Gaps dynamic insight box */}
+              {((result.only_policy1_tags?.length || 0) > 0 || (result.only_policy2_tags?.length || 0) > 0) && (
+                <div style={{
+                  background: "var(--bg-hover)",
+                  backgroundColor: "var(--bg-hover)",
+                  border: "1px solid var(--border)",
+                  borderLeft: "3px solid #d97706",
+                  borderRadius: "6px",
+                  padding: "12px 14px",
+                  marginTop: "14px"
+                }}>
+                  <p style={{
+                    fontSize: "14px",
+                    fontFamily: "DM Sans",
+                    color: "var(--text-muted)",
+                    margin: 0,
+                    lineHeight: 1.7
+                  }}>
+                    These gaps represent areas where one jurisdiction has chosen to regulate specifically. Organizations operating across both must address {(result.only_policy1_tags?.length || 0) + (result.only_policy2_tags?.length || 0)} additional distinct requirements.
+                  </p>
                 </div>
               )}
+            </div>
 
-              {/* Source Links */}
-              <div style={{ display: "flex", gap: 12, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
-                {[(result.policy1 || result.policy_1), (result.policy2 || result.policy_2)].map((p, i) => (
-                  p?.source_url ? (
-                    <a key={i} href={p.source_url} target="_blank" rel="noreferrer"
-                      style={{
-                        fontSize: 11, color: i === 0 ? "#818cf8" : "var(--cyan)",
-                        textDecoration: "none", fontFamily: "JetBrains Mono",
-                        padding: "4px 10px", borderRadius: 6,
-                        border: `1px solid ${i === 0 ? "rgba(129,140,248,0.2)" : "rgba(34,211,238,0.2)"}`,
-                        background: i === 0 ? "rgba(129,140,248,0.06)" : "rgba(34,211,238,0.06)",
-                      }}>
-                      ↗ Policy {i === 0 ? "A" : "B"} Source
-                    </a>
-                  ) : null
-                ))}
+            {/* Page Break Hint */}
+            <div className="pdf-page-break" style={{ display: "none" }} />
+
+            {/* SECTION 5 — DIMENSIONAL ANALYSIS */}
+            {result.dimensional_breakdown && (
+              <div className="pdf-section" style={{ pageBreakInside: "avoid", marginBottom: "28px" }}>
+                <SectionDivider label="05 REGULATORY DIMENSIONS" />
+                
+                <div style={{
+                  padding: "22px 28px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)"
+                }}>
+                  <div style={{ fontSize: "12px", fontFamily: "DM Sans", color: "var(--text-muted)", marginBottom: "20px" }}>
+                    How each policy scores across 6 regulatory dimensions
+                  </div>
+
+                  {/* Legend row */}
+                  <div style={{ display: "flex", gap: "20px", marginBottom: "16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: "8px", height: "8px", background: "#2563eb", backgroundColor: "#2563eb", display: "inline-block" }}></span>
+                      <span style={{ fontSize: "11px", fontFamily: "DM Sans", color: "var(--text-muted)" }}>Policy A</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: "8px", height: "8px", background: "#5c9e2e", backgroundColor: "#5c9e2e", display: "inline-block" }}></span>
+                      <span style={{ fontSize: "11px", fontFamily: "DM Sans", color: "var(--text-muted)" }}>Policy B</span>
+                    </div>
+                  </div>
+
+                  {/* Dimensions list */}
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {Object.entries(result.dimensional_breakdown).map(([dimName, info], idx) => (
+                      <div
+                        key={dimName}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "16px",
+                          marginBottom: "16px",
+                          paddingBottom: "16px",
+                          borderBottom: idx < 5 ? "1px solid #f5f5f5" : "none"
+                        }}
+                      >
+                        <span style={{
+                          width: "130px",
+                          flexShrink: 0,
+                          fontSize: "13px",
+                          fontFamily: "DM Sans",
+                          fontWeight: 600,
+                          color: "#1f2937",
+                          textTransform: "capitalize"
+                        }}>
+                          {dimName}
+                        </span>
+
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
+                          {/* Bar A */}
+                          <div style={{ width: "100%", height: "8px", background: "#f5f5f5", borderRadius: "4px", overflow: "hidden" }}>
+                            <div style={{
+                              width: `${Math.round((info.strength_policy1 || 0) * 100)}%`,
+                              height: "100%",
+                              background: "#2563eb",
+                              backgroundColor: "#2563eb",
+                              opacity: 0.85,
+                              borderRadius: "4px"
+                            }} />
+                          </div>
+                          {/* Bar B */}
+                          <div style={{ width: "100%", height: "8px", background: "#f5f5f5", borderRadius: "4px", overflow: "hidden" }}>
+                            <div style={{
+                              width: `${Math.round((info.strength_policy2 || 0) * 100)}%`,
+                              height: "100%",
+                              background: "#5c9e2e",
+                              backgroundColor: "#5c9e2e",
+                              opacity: 0.85,
+                              borderRadius: "4px"
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* Dominant label */}
+                        <div style={{
+                          width: "60px",
+                          textAlign: "right",
+                          fontSize: "11px",
+                          fontFamily: "JetBrains Mono",
+                          fontWeight: 500,
+                          color: info.dominant === "policy1" ? "#2563eb" : info.dominant === "policy2" ? "#5c9e2e" : "#9ca3af"
+                        }}>
+                          {info.dominant === "policy1" ? "A stronger" : info.dominant === "policy2" ? "B stronger" : "Equal"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SECTION 6 — PHILOSOPHY & APPROACH */}
+            <div className="pdf-section" style={{ pageBreakInside: "avoid", marginBottom: "28px" }}>
+              <SectionDivider label="06 REGULATORY PHILOSOPHY" />
+
+              <div style={{
+                padding: "22px 28px",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08)"
+              }}>
+                <div style={{ display: "flex", gap: "24px" }}>
+                  {/* Left philosophy column */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: "11px",
+                      fontFamily: "JetBrains Mono",
+                      color: "var(--text-muted)",
+                      marginBottom: "4px",
+                      fontWeight: 500,
+                      letterSpacing: "0.1em"
+                    }}>
+                      POLICY A APPROACH
+                    </div>
+                    <div style={{ fontSize: "22px", fontFamily: "DM Sans", fontWeight: 700, color: "var(--text-main)", marginBottom: "10px" }}>
+                      {(result.policy_1?.approach || result.policy1?.approach || "Standard")}
+                    </div>
+                    
+                    <p style={{
+                      fontSize: "14px",
+                      fontFamily: "DM Sans",
+                      color: "var(--text-muted)",
+                      margin: 0,
+                      lineHeight: 1.7
+                    }}>
+                      This policy prioritizes {(() => {
+                        const app = (result.policy_1?.approach || result.policy1?.approach || "").toLowerCase();
+                        if (app.includes("compliance")) return "strict adherence through defined obligations and penalty structures";
+                        if (app.includes("risk")) return "proportionate response based on assessed harm potential";
+                        if (app.includes("principles")) return "broad values over specific rules, allowing adaptive implementation";
+                        if (app.includes("innovation")) return "enabling new technologies while managing emerging risks";
+                        if (app.includes("safety")) return "precautionary approach with mandatory human oversight requirements";
+                        if (app.includes("voluntary") || app.includes("soft")) return "industry self-regulation guided by recommended frameworks";
+                        return "a standardized set of requirements for operational compliance";
+                      })()}.
+                    </p>
+                  </div>
+
+                  {/* Vertical Divider */}
+                  <div style={{ width: "1px", background: "var(--border)", backgroundColor: "var(--border)" }} />
+
+                  {/* Right philosophy column */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: "11px",
+                      fontFamily: "JetBrains Mono",
+                      color: "var(--text-muted)",
+                      marginBottom: "4px",
+                      fontWeight: 500,
+                      letterSpacing: "0.1em"
+                    }}>
+                      POLICY B APPROACH
+                    </div>
+                    <div style={{ fontSize: "22px", fontFamily: "DM Sans", fontWeight: 700, color: "var(--text-main)", marginBottom: "10px" }}>
+                      {(result.policy_2?.approach || result.policy2?.approach || "Standard")}
+                    </div>
+                    
+                    <p style={{
+                      fontSize: "14px",
+                      fontFamily: "DM Sans",
+                      color: "var(--text-muted)",
+                      margin: 0,
+                      lineHeight: 1.7
+                    }}>
+                      This policy prioritizes {(() => {
+                        const app = (result.policy_2?.approach || result.policy2?.approach || "").toLowerCase();
+                        if (app.includes("compliance")) return "strict adherence through defined obligations and penalty structures";
+                        if (app.includes("risk")) return "proportionate response based on assessed harm potential";
+                        if (app.includes("principles")) return "broad values over specific rules, allowing adaptive implementation";
+                        if (app.includes("innovation")) return "enabling new technologies while managing emerging risks";
+                        if (app.includes("safety")) return "precautionary approach with mandatory human oversight requirements";
+                        if (app.includes("voluntary") || app.includes("soft")) return "industry self-regulation guided by recommended frameworks";
+                        return "a standardized set of requirements for operational compliance";
+                      })()}.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Philosophical alignment insight box */}
+                <div style={{
+                  background: "var(--bg-hover)",
+                  backgroundColor: "var(--bg-hover)",
+                  border: "1px solid var(--border)",
+                  borderLeft: `3px solid ${(result.policy_1?.approach || result.policy1?.approach) !== (result.policy_2?.approach || result.policy2?.approach) ? "#d97706" : "#5c9e2e"}`,
+                  borderRadius: "6px",
+                  padding: "12px 14px",
+                  marginTop: "14px"
+                }}>
+                  {(() => {
+                    const app1 = result.policy_1?.approach || result.policy1?.approach || "Standard";
+                    const app2 = result.policy_2?.approach || result.policy2?.approach || "Standard";
+                    
+                    if (app1 !== app2) {
+                      return (
+                        <p style={{
+                          fontSize: "14px",
+                          fontFamily: "DM Sans",
+                          color: "var(--text-muted)",
+                          margin: 0,
+                          lineHeight: 1.7
+                        }}>
+                          These policies represent different regulatory philosophies. {app1} frameworks typically offer more legal certainty but less flexibility. {app2} frameworks allow faster adaptation but may create compliance ambiguity.
+                        </p>
+                      );
+                    } else {
+                      return (
+                        <p style={{
+                          fontSize: "14px",
+                          fontFamily: "DM Sans",
+                          color: "var(--text-muted)",
+                          margin: 0,
+                          lineHeight: 1.7
+                        }}>
+                          Both policies share a {app1} philosophy, suggesting alignment in regulatory intent despite differences in specific provisions.
+                        </p>
+                      );
+                    }
+                  })()}
+                </div>
               </div>
             </div>
 
-          </div>{/* ← end of comparison view div */}
+            {/* Page Break Hint */}
+            <div className="pdf-page-break" style={{ display: "none" }} />
 
-          {/* Download button */}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-            <button onClick={downloadReport} style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "10px 20px", borderRadius: 8,
-              background: "linear-gradient(135deg, var(--cyan-dim), #0e7490)",
-              border: "none", color: "#fff",
-              fontFamily: "Inter", fontWeight: 700,
-              fontSize: 13, cursor: "pointer",
-            }}>
-              ⬇ Download Comparison Report (PDF)
-            </button>
-          </div>
+            {/* SECTION 7 — AI INSIGHTS */}
+            <div className="pdf-section" style={{ pageBreakInside: "avoid", marginBottom: "28px" }}>
+              <SectionDivider label="07 INTELLIGENCE INSIGHTS" />
 
-        </div>
-      )}
+              <div style={{
+                padding: "22px 28px",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08)"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Lightbulb size={14} color="#d97706" />
+                    <span style={{ fontSize: "13px", fontFamily: "DM Sans", color: "var(--text-muted)" }}>
+                      Generated by ML analysis
+                    </span>
+                  </div>
+                  <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)" }}>
+                    {result.insights?.length || 0} insights
+                  </span>
+                </div>
 
-      {loading && <LoadingSpinner label="Running comparison analysis..." />}
-
-      {/* Sector Filter + Policy Grid */}
-      {step < 3 && (
-        <>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-            {["", "AI Governance", "Cybersecurity", "Data Privacy", "Healthcare AI", "Financial Regulation", "ESG Policies", "POSH Policies", "IoT and Robotics"].map(s => (
-              <button key={s} onClick={() => setSectorFilter(s)}
-                style={{
-                  padding: "6px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer",
-                  background: sectorFilter === s ? "rgba(34,211,238,0.15)" : "var(--bg-card)",
-                  border: `1px solid ${sectorFilter === s ? "var(--cyan)" : "var(--border)"}`,
-                  color: sectorFilter === s ? "var(--cyan)" : "var(--text-muted)",
-                }}>
-                {s || "All Sectors"}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ maxHeight: 600, overflowY: "auto", paddingRight: 4 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
-              {policies.map((p, i) => (
-                <PolicyCard
-                  key={p.id} policy={p} delay={(i % 5) + 1}
-                  selectable selected={sel1?.id === p.id}
-                  onSelect={handleSelect}
-                />
-              ))}
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {result.insights?.length > 0 ? (
+                    result.insights.map((insight, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          gap: "14px",
+                          alignItems: "flex-start",
+                          paddingBottom: "12px",
+                          borderBottom: idx < result.insights.length - 1 ? "1px solid #eeeeee" : "none",
+                          marginBottom: idx < result.insights.length - 1 ? "12px" : "0"
+                        }}
+                      >
+                        <span style={{
+                          fontSize: "12px",
+                          fontFamily: "JetBrains Mono",
+                          fontWeight: "600",
+                          color: "#5c9e2e",
+                          width: "28px",
+                          flexShrink: 0,
+                          marginTop: "2px"
+                        }}>
+                          0{idx + 1}
+                        </span>
+                        <p style={{
+                          fontSize: "14px",
+                          fontFamily: "DM Sans",
+                          color: "#1f2937",
+                          margin: 0,
+                          lineHeight: 1.75,
+                          fontWeight: 400
+                        }}>
+                          {insight}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <span style={{ fontSize: "12px", fontFamily: "DM Sans", fontStyle: "italic", color: "var(--text-dim)" }}>
+                      No ML analysis insights generated.
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {/* SECTION 8 — ADOPTION RECOMMENDATION */}
+            <div className="pdf-section" style={{ pageBreakInside: "avoid", marginBottom: "28px" }}>
+              <SectionDivider label="08 WHAT TO DO WITH THIS" />
+
+              <div style={{
+                padding: "22px 28px",
+                border: "1px solid var(--border)",
+                background: "var(--bg-hover)",
+                backgroundColor: "var(--bg-hover)",
+                borderRadius: "8px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08)"
+              }}>
+                {/* Block 1: FOR COUNTRIES BUILDING FRAMEWORKS */}
+                <div>
+                  <h5 style={{
+                    fontSize: "12px",
+                    fontFamily: "JetBrains Mono",
+                    color: "var(--text-muted)",
+                    letterSpacing: "0.1em",
+                    margin: "0 0 10px 0",
+                    fontWeight: "600"
+                  }}>
+                    FOR COUNTRIES BUILDING FRAMEWORKS
+                  </h5>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {result.ml_metrics?.same_sector && (result.overall_metrics?.composite_score || 0) > 0.6 ? (
+                      <>
+                        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                          <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                          <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                            Both policies offer viable templates — choose based on your enforcement capacity
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                          <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                          <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                            Adopt shared provisions as your baseline ({result.shared_tags?.length || 0} areas of consensus)
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                          <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                          <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                            Select unique provisions from whichever jurisdiction matches your development stage
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                          <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                          <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                            These policies address {result.policy_1?.sector || "Policy A sector"} and {result.policy_2?.sector || "Policy B sector"} separately — implement both frameworks for complete coverage
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                          <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                          <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                            Start with {(() => {
+                              const y1 = result.policy_1?.year || 0;
+                              const y2 = result.policy_2?.year || 0;
+                              return y1 >= y2 ? (result.policy_1?.title || "Policy A") : (result.policy_2?.title || "Policy B");
+                            })()} as your primary reference (more recent)
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: "1px", background: "#d8d8d8", backgroundColor: "#d8d8d8", margin: "14px 0" }} />
+
+                {/* Block 2: FOR COMPLIANCE PROFESSIONALS */}
+                <div>
+                  <h5 style={{
+                    fontSize: "12px",
+                    fontFamily: "JetBrains Mono",
+                    color: "var(--text-muted)",
+                    letterSpacing: "0.1em",
+                    margin: "0 0 10px 0",
+                    fontWeight: "600"
+                  }}>
+                    FOR COMPLIANCE PROFESSIONALS
+                  </h5>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                      <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                        Map shared themes to establish a unified compliance matrix for rapid audit scoping
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                      <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                        Conduct a targeted gap analysis against unique provisions before expanding services
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                      <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                        Update incident response procedures to satisfy overlapping regulatory constraints
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: "1px", background: "#d8d8d8", backgroundColor: "#d8d8d8", margin: "14px 0" }} />
+
+                {/* Block 3: FOR POLICY RESEARCHERS */}
+                <div>
+                  <h5 style={{
+                    fontSize: "12px",
+                    fontFamily: "JetBrains Mono",
+                    color: "var(--text-muted)",
+                    letterSpacing: "0.1em",
+                    margin: "0 0 10px 0",
+                    fontWeight: "600"
+                  }}>
+                    FOR POLICY RESEARCHERS
+                  </h5>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                      <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                        Examine divergence in unique provisions to trace jurisdictional priorities and scope constraints
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                      <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                        Track how cross-border differences impact compliance overhead for global tech platforms
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ color: "#5c9e2e", fontFamily: "DM Sans", fontSize: "14px", fontWeight: 700, flexShrink: 0, marginTop: "1px" }}>→</span>
+                      <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                        Evaluate the efficiency of these models to inform future global harmonizing standard reviews
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
           </div>
-        </>
-      )}
+        )}
+
       </div>
     </div>
   );

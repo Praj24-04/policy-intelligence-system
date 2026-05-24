@@ -35,7 +35,7 @@ export default function Policies() {
     <div style={{
       flex: 1,
       overflowY: "auto",
-      background: "#ffffff",
+      background: "var(--bg-deep)",
       minHeight: "100vh"
     }}>
       <div style={{
@@ -51,7 +51,7 @@ export default function Policies() {
           {/* Breadcrumb line above title */}
           <div style={{ 
             fontSize: "10px", 
-            color: "#9ca3af", 
+            color: "var(--text-dim)", 
             fontFamily: "'JetBrains Mono', monospace", 
             textTransform: "uppercase", 
             letterSpacing: "1.5px", 
@@ -75,7 +75,7 @@ export default function Policies() {
             fontFamily: "'DM Sans', sans-serif", 
             fontSize: "52px", 
             fontWeight: 700, 
-            color: "#0a0a0a",
+            color: "var(--text-main)",
             margin: "0 0 16px 0",
             letterSpacing: "-1.5px",
             lineHeight: "1.1"
@@ -94,7 +94,7 @@ export default function Policies() {
           }}>
             <p style={{ 
               fontFamily: "'DM Sans', sans-serif", 
-              color: "#6b7280", 
+              color: "var(--text-muted)", 
               fontSize: "14px", 
               margin: 0,
               maxWidth: "600px",
@@ -109,15 +109,15 @@ export default function Policies() {
               gap: 16, 
               fontFamily: "'JetBrains Mono', monospace", 
               fontSize: "11px", 
-              color: "#6b7280",
+              color: "var(--text-muted)",
               fontWeight: 500,
               alignItems: "center"
             }}>
-              <span>ACTIVE <strong style={{ color: "#0a0a0a", marginLeft: 4 }}>{policies.filter(p => p.year >= 2023).length || 240}</strong></span>
-              <span style={{ color: "#e5e7eb" }}>|</span>
-              <span>UNDER REVIEW <strong style={{ color: "#0a0a0a", marginLeft: 4 }}>{policies.filter(p => p.year < 2023).length || 502}</strong></span>
-              <span style={{ color: "#e5e7eb" }}>|</span>
-              <span>INDEXED <strong style={{ color: "#ffffff", background: "#0a0a0a", padding: "2px 6px", borderRadius: "3px", marginLeft: 4, fontWeight: 700 }}>{policies.length}</strong></span>
+              <span>ACTIVE <strong style={{ color: "var(--text-main)", marginLeft: 4 }}>{policies.filter(p => p.year >= 2023).length || 240}</strong></span>
+              <span style={{ color: "var(--border)" }}>|</span>
+              <span>UNDER REVIEW <strong style={{ color: "var(--text-main)", marginLeft: 4 }}>{policies.filter(p => p.year < 2023).length || 502}</strong></span>
+              <span style={{ color: "var(--border)" }}>|</span>
+              <span>INDEXED <strong style={{ color: "var(--bg-base)", background: "var(--text-main)", padding: "2px 6px", borderRadius: "3px", marginLeft: 4, fontWeight: 700 }}>{policies.length}</strong></span>
             </div>
           </div>
 
@@ -129,8 +129,8 @@ export default function Policies() {
           style={{
             padding: "16px 20px",
             borderRadius: "8px",
-            border: "1px solid #e8e8e8",
-            background: "#ffffff",
+            border: "1px solid var(--border)",
+            background: "var(--bg-card)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -147,26 +147,26 @@ export default function Policies() {
               width: "40px",
               height: "40px",
               borderRadius: "6px",
-              background: "#f5f5f5",
-              border: "1px solid #e8e8e8",
+              background: "var(--bg-hover)",
+              border: "1px solid var(--border)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#6b7280"
+              color: "var(--text-muted)"
             }}>
               <Globe2 size={18} />
             </div>
             {/* Text info */}
             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", fontWeight: 600, color: "#0a0a0a" }}>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", fontWeight: 600, color: "var(--text-main)" }}>
                 Top 100 Policy Frameworks in AI Governance 2026
               </div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#9ca3af", letterSpacing: "0.06em" }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--text-dim)", letterSpacing: "0.06em" }}>
                 GOVERNMENT / STANDARDS / ISO / REGULATION
               </div>
             </div>
           </div>
-          <ExternalLink size={14} color="#9ca3af" />
+          <ExternalLink size={14} color="var(--text-dim)" />
         </div>
 
         {/* ── Search & Location Dual Inputs ── */}
@@ -180,7 +180,7 @@ export default function Policies() {
           <div style={{ position: "relative", flex: 3, minWidth: "200px" }}>
             <Search 
               size={16} 
-              color="#9ca3af" 
+              color="var(--text-dim)" 
               style={{ 
                 position: "absolute", 
                 left: 16, 
@@ -197,13 +197,14 @@ export default function Policies() {
               style={{
                 width: "100%",
                 height: 48,
-                border: "1px solid #e8e8e8",
+                border: "1px solid var(--border)",
                 borderRadius: "8px",
                 padding: "0 16px 0 44px",
                 outline: "none",
                 fontSize: "14px",
                 fontFamily: "'DM Sans', sans-serif",
-                background: "#ffffff",
+                background: "var(--bg-card)",
+                color: "var(--text-main)",
                 boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
               }}
             />
@@ -231,13 +232,14 @@ export default function Policies() {
               style={{
                 width: "100%",
                 height: 48,
-                border: "1px solid #e8e8e8",
+                border: "1px solid var(--border)",
                 borderRadius: "8px",
                 padding: "0 32px 0 40px",
                 outline: "none",
                 fontSize: "14px",
                 fontFamily: "'DM Sans', sans-serif",
-                background: "#ffffff",
+                background: "var(--bg-card)",
+                color: "var(--text-main)",
                 boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
                 cursor: "pointer",
                 appearance: "none",
@@ -295,9 +297,9 @@ export default function Policies() {
               fontFamily: "'DM Sans', sans-serif",
               cursor: "pointer",
               transition: "all 0.15s ease",
-              background: sector === "" ? "#0a0a0a" : "#ffffff",
-              color: sector === "" ? "#ffffff" : "#6b7280",
-              border: sector === "" ? "1px solid #0a0a0a" : "1px solid #e8e8e8",
+              background: sector === "" ? "var(--text-main)" : "var(--bg-card)",
+              color: sector === "" ? "var(--bg-base)" : "var(--text-muted)",
+              border: sector === "" ? "1px solid var(--text-main)" : "1px solid var(--border)",
               fontWeight: sector === "" ? 500 : 400
             }}
           >
@@ -317,9 +319,9 @@ export default function Policies() {
                   fontFamily: "'DM Sans', sans-serif",
                   cursor: "pointer",
                   transition: "all 0.15s ease",
-                  background: isSelected ? "#0a0a0a" : "#ffffff",
-                  color: isSelected ? "#ffffff" : "#6b7280",
-                  border: isSelected ? "1px solid #0a0a0a" : "1px solid #e8e8e8",
+                  background: isSelected ? "var(--text-main)" : "var(--bg-card)",
+                  color: isSelected ? "var(--bg-base)" : "var(--text-muted)",
+                  border: isSelected ? "1px solid var(--text-main)" : "1px solid var(--border)",
                   fontWeight: isSelected ? 500 : 400
                 }}
               >
@@ -363,7 +365,7 @@ export default function Policies() {
           <div>
             <div style={{ 
               fontSize: "10px", 
-              color: "#9ca3af", 
+              color: "var(--text-dim)", 
               fontFamily: "'JetBrains Mono', monospace", 
               textTransform: "uppercase", 
               letterSpacing: "1px", 
@@ -385,7 +387,7 @@ export default function Policies() {
               fontFamily: "'DM Sans', sans-serif",
               fontSize: "18px",
               fontWeight: 600,
-              color: "#0a0a0a",
+              color: "var(--text-main)",
               margin: 0,
               letterSpacing: "-0.5px"
             }}>
@@ -396,7 +398,7 @@ export default function Policies() {
           <div style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: "10px",
-            color: "#9ca3af",
+            color: "var(--text-dim)",
             letterSpacing: "0.1em",
             fontWeight: 500
           }}>
@@ -410,7 +412,7 @@ export default function Policies() {
             {policies.length === 0 ? (
               <div style={{ 
                 textAlign: "center", 
-                color: "#6b7280", 
+                color: "var(--text-muted)", 
                 padding: "60px 0",
                 fontFamily: "'DM Sans', sans-serif",
                 fontSize: "14px"

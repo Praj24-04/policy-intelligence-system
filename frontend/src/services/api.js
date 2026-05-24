@@ -48,6 +48,7 @@ const postJson = async (url, body) => {
 export const loginUser    = (email, password) => postJson("/auth/login", { email, password });
 export const registerUser = (email, full_name, password) => postJson("/auth/register", { email, full_name, password });
 export const forgotPassword = (email) => postJson("/auth/forgot-password", { email });
+export const loginWithGoogle = (credential) => postJson("/auth/google", { credential });
 export const resetPassword  = (token, new_password) => postJson("/auth/reset-password", { token, new_password });
 export const fetchHistory   = () => get("/auth/history");
 

@@ -12,6 +12,9 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class GoogleLoginRequest(BaseModel):
+    credential: str
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
