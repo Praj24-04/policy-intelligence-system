@@ -12,6 +12,7 @@ import UploadPolicy from "./pages/UploadPolicy";
 import Login from "./pages/Login";
 import GeneratePolicy from "./pages/GeneratePolicy";
 import Home from "./pages/Home";
+import Profile from "./pages/Profile";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -63,6 +64,7 @@ export default function App() {
               <Route path="/recommend" element={<Recommend />} />
               <Route path="/upload" element={<UploadPolicy />} />
               <Route path="/generate" element={<GeneratePolicy />} />
+              <Route path="/profile" element={<Profile user={user} />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>

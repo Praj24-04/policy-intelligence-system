@@ -148,15 +148,20 @@ export default function Sidebar({ user, onLogout }) {
             </div>
           </div>
           
-          <div style={{
+          <NavLink to="/profile" style={({ isActive }) => ({
             display: "flex", alignItems: "center", gap: 12,
-            padding: "10px 14px", borderRadius: 8, marginBottom: 2,
-            color: "var(--text-muted)", fontSize: 14, fontWeight: 500,
-            cursor: "pointer"
-          }}>
+            padding: isActive ? "10px 14px 10px 12px" : "10px 14px", 
+            borderRadius: 8, marginBottom: 2,
+            textDecoration: "none",
+            background: isActive ? activeBg : "transparent",
+            color: isActive ? activeColor : "var(--text-muted)",
+            borderLeft: isActive ? `3px solid ${activeBorder}` : "3px solid transparent",
+            fontSize: 14, fontWeight: isActive ? 600 : 500,
+            transition: "all 0.15s",
+          })}>
             <UserCircle size={18} />
             My Profile
-          </div>
+          </NavLink>
 
           <div 
             onClick={onLogout}
