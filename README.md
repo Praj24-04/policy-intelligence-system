@@ -1,43 +1,59 @@
 # PolicyIQ — Global Policy Intelligence System
 
-PolicyIQ is a full-stack, AI-powered platform designed for aggregating, analyzing, and generating global policy intelligence. It provides deep regulatory insights across critical sectors like AI Governance, Cybersecurity, Data Privacy, and ESG.
+PolicyIQ is a state-of-the-art, AI-powered regulatory intelligence platform designed for aggregating, analyzing, and comparing global policy frameworks. By combining advanced deep learning bi-encoders, cross-encoder rerankers, density-based clustering, and NLP parsing, PolicyIQ offers a robust decision-support tool for global compliance across critical sectors like AI Governance, Cybersecurity, Data Privacy, and ESG.
 
 ---
 
-## 🌟 Key Features
+## 🔬 Core Machine Learning & NLP Architecture
 
-### 1. Premium SaaS Dashboard & UI overhaul
-* **Modern Aesthetic:** A sleek "black-and-lime" visual identity matching enterprise-grade design standards (neutral borders `#e8e8e8`, clean card backgrounds `var(--bg-card)`, and signature lime green `#5c9e2e` highlights).
-* **Deep Theme Synchronization (Full Dark Mode):** Zero hardcoded styles. The entire dashboard dynamically shifts colors based on a persistent global dark mode toggle, transforming components (stat cards, interactive map elements, Recharts tooltip overlays, and bar charts) into high-contrast Zinc-950/Zinc-50 deep space tones.
-* **Proportional Grid Alignment:** Visually balanced dashboard grid containing proportionally centered data containers (`220px` responsive height) including dynamic pie charts, chronological area charts, global maps, and spaCy NER country lists.
-* **Nowrap Pipeline Banner:** A single-line horizontal scrollable Hybrid Intelligence Pipeline banner detailing live-fetched sources, live indicators, and asynchronous fetch trigger status with dynamic visual spinner states.
+### 1. Hybrid Bi-Encoder Embedding Engine
+* **Primary Deep Model:** Employs **Legal-BERT** (`nlpaueb/legal-bert-base-uncased`) via SentenceTransformers to extract dense, domain-specific semantic profiles from complex legal and regulatory vocabularies.
+* **Fail-Safe Fallbacks:** Dynamically degrades to `all-mpnet-base-v2` or `all-MiniLM-L6-v2` in resource-constrained environments.
+* **Weighted Pool Strategy:** Instead of simple mean pooling, policy representations are constructed via a weighted mean of separate fields:
+  * **Title:** Weight `4.0`
+  * **Tags & Concepts:** Weight `3.0`
+  * **Sector & Country Metadata:** Weight `2.0`
+  * **Content Chunks:** Weight `1.0` each (split using an overlapping sliding-window chunker up to `256` words to preserve context boundary).
 
-### 2. Live Aggregation & Synchronization Pipeline
-* **Auto-Ingestion Pipeline:** Uses `apscheduler` on the backend to dynamically ingest live policies from API endpoints (EUR-Lex, CISA, US Federal Register) and merge them with curated foundational structures.
-* **Robust Database Seeder:** Automatic startup script ensures full synchronization between the UI, API statistics, and the PostgreSQL database tables.
-* **Sector Segmentation:** Advanced categorical indexing for high-specificity sectors (AI Governance, Cyber, Privacy, POSH, Healthcare, ESG).
+### 2. Dual-Engine Vector Store
+* **Primary Engine:** **ChromaDB Vector Store** indexes high-dimensional vectors to perform sub-millisecond Cosine Similarity searches.
+* **Fallback Engine:** **PostgreSQL pgvector** acts as a relational vector backup, allowing on-the-fly similarity calculations and seamless fallback queries if the local vector DB is warming up.
 
-### 3. ML-Powered Policy Recommender
-* **Strategic Adoption Matches:** Employs TF-IDF and KMeans clustering to match policy frameworks with countries based on their regulatory maturity and GDP tier.
-* **Semantic Similarity (BERT):** Uses SentenceTransformers to find thematically identical policies across borders.
-* **Human-in-the-Loop Feedback:** Users can vote on the relevance of ML recommendations, continuously refining system accuracy.
+### 3. Dimensionality Reduction & HDBSCAN Clustering
+* **UMAP Reduction:** Employs UMAP (Uniform Manifold Approximation and Projection) with `50` components and `cosine` metric to compress high-dimensional bi-encoder vectors while preserving global and local relationships.
+* **HDBSCAN Spatial Clustering:** Runs Hierarchical Density-Based Spatial Clustering (`min_cluster_size=5`, `min_samples=3`) on UMAP coordinates. This dynamically groups policies into organic regulatory clusters and filters outlier noise documents (`-1`).
+* **Real-time Prediction:** Uses UMAP's `.transform()` and HDBSCAN's `approximate_predict` to classify new or uploaded policies on-the-fly, storing the assignment along with a dynamic `cluster_confidence` float.
 
-### 4. Advanced Policy Comparator
-* **Side-by-Side Analysis:** Instantly compare any two policies in the database.
-* **Gap Detection:** Automatically identifies verbatim orphaned clauses, unique focus areas, and shared ML-extracted themes.
-* **Export to PDF:** Generates formatted `jsPDF` reports of the comparison directly from the browser.
+### 4. Five-Factor Policy Recommender Pipeline
+PolicyIQ generates country-level recommendation matches using a proprietary **5-Factor Multi-Criteria Scoring System** with **Cross-Encoder Reranking**:
+1. **Factor 1: Sector Gap (35% weight)** - Evaluates whether a country completely lacks a framework in the policy's sector, or flags frameworks that are vintage/outdated (>= 3 years gap).
+2. **Factor 2: Regulatory Maturity (25% weight)** - Adapts proposals to national readiness levels (Nascent, Emerging, Developing, Advanced).
+3. **Factor 3: Semantic Need Match (20% weight)** - Runs cosine similarity between the policy profile and the country's national priority descriptions (`country_needs`) in PostgreSQL.
+4. **Factor 4: Regional Adoption Pressure (12% weight)** - Tallies the quantity of regional neighbors who have implemented identical or similar policies.
+5. **Factor 5: Economic Tier GDP Alignment (8% weight)** - Facilitates leapfrogging transfers between advanced and emerging GDP tiers.
 
-### 5. Custom Document Ingestion
-* **PDF Uploads:** Upload proprietary policy documents (`.pdf`) for instant NLP analysis.
-* **Auto-Tagging:** Extracts word counts, countries (via spaCy NER), sectors, and summarizes key constraints.
+* **Cross-Encoder Reranking:** When the top recommendations have scores within `0.15` of each other, the pipeline runs **MS-Marco MiniLM Cross-Encoder** (`cross-encoder/ms-marco-MiniLM-L-6-v2`) to perform deep, bi-directional attention checks on the regulatory context.
 
-### 6. AI Policy Template Generator
-* **Drafting Assistant:** Automatically drafts comprehensive regulatory frameworks tailored to specific countries and sectors.
-* **Gap Analysis Context:** Adjusts the generated language based on whether it is supplementing an existing framework or filling a total regulatory void.
-* **Text Export:** One-click download of the generated template as a `.txt` file.
+### 5. Six-Dimensional Policy Comparator
+Provides granular gap analysis between any two policy frameworks using a three-tier comparison:
+* **Thematic Projection:** Maps both policies against six anchor vector spaces (Enforcement, Scope, Individual Rights, Mandatory Obligations, Innovation Sandbox, and Transparency/Audits).
+* **Composite Score:** Combines Bi-Encoder Cosine similarity (40%), Cross-Encoder Sigmoid prediction (35%), and Jaccard Tag overlap (25%) into a single standardized index.
+* **Philosophical Classification:** Classifies regulatory approaches into one of five baseline philosophies (*Principles-based, Risk-based, Compliance-driven, Safety-first, or Innovation-focused*).
+* **Dynamic Comparative Insights:** Generates highlights detailing geopolitical divergence, structural complexity (word count density), and vintage gaps.
 
-### 7. Interactive Analytics
-* **Live Visualizations:** Powered by `Recharts` for geographic distribution (radar charts), chronological adoption (bar charts), and ML-feedback accuracy.
+### 6. NLP & Entity Extraction Service
+* **spaCy NER:** Employs medium English pipelines (`en_core_web_md` or fallback `en_core_web_sm`) using `GPE`, `LOC`, and `NORP` labels to parse out geographical jurisdictions.
+* **Frequency Tag Ranking:** Runs frequency-analysis on policy text to prioritize and rank tag badges, ensuring the most active regulatory concepts bubble to the top.
+* **Monetary Fine Extractor:** Parses statutory texts to identify and format financial penalties and regulatory liabilities.
+
+---
+
+## 🌟 Premium UX & Theme Standard
+
+* **Enterprise Visual Identity:** Beautiful "black-and-lime" dashboard designed to match high-end corporate platforms (neutral borders `#e8e8e8`, card backgrounds `var(--bg-card)`, and signature lime green `#5c9e2e` accents).
+* **Dynamic Light/Dark Mode:** Dynamic CSS variable mapping synchronizes every component (cards, radar charts, line graphs, map shapes, and hover overlays) automatically.
+* **Proportional Grid Layout:** Centers visual components evenly across a dual-column layout containing Recharts donut sector distributions, chronological area timelines, interactive maps, and NLP lists.
+* **Live Aggregator Pipeline Banner:** A single-row nowrap banner showing ingestion statistics (Curated, EUR-Lex, CISA, US Fed Register) and real-time live sync indicators.
 
 ---
 
@@ -53,8 +69,8 @@ PolicyIQ is a full-stack, AI-powered platform designed for aggregating, analyzin
 * **Framework:** FastAPI (Python)
 * **Database:** PostgreSQL (psycopg2)
 * **Security:** JWT Authentication, Bcrypt password hashing
-* **ML & Data:** spaCy (NER), SentenceTransformers (Embeddings/Similarity), Scikit-Learn (TF-IDF/KMeans)
-* **Background Tasks:** APScheduler
+* **ML & NLP:** spaCy (en_core_web_md), SentenceTransformers (Legal-BERT), UMAP, HDBSCAN, Scikit-Learn
+* **Scheduling:** APScheduler
 
 ---
 
@@ -63,13 +79,16 @@ PolicyIQ is a full-stack, AI-powered platform designed for aggregating, analyzin
 ### Prerequisites
 * Node.js (v16+)
 * Python (v3.9+)
-* PostgreSQL installed and running on default port `5432`
+* PostgreSQL running on port `5432`
 
-### 1. Database Configuration
-Ensure PostgreSQL is running and create a database named `policy_db` with credentials matching your local environment (default: `postgres` / `admin123`).
+### 1. Database Setup
+Create a PostgreSQL database named `policy_db`:
+```sql
+CREATE DATABASE policy_db;
+```
 
-### 2. Backend Setup
-Navigate to the `backend` directory, create a virtual environment, and install dependencies:
+### 2. Backend Installation
+Navigate to the `backend` folder, create a virtual environment, and install dependencies:
 ```bash
 cd backend
 python -m venv venv
@@ -77,30 +96,29 @@ python -m venv venv
 # On Mac/Linux: source venv/bin/activate
 
 pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+python -m spacy download en_core_web_md
 ```
 
-Initialize the database schema:
+Initialize the database schema and seeder:
 ```bash
 python check_tables.py
 ```
 
-Run the backend server:
+Start the FastAPI application:
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 3. Frontend Setup
-Navigate to the `frontend` directory:
+### 3. Frontend Installation
+Navigate to the `frontend` folder, install packages, and start the React dev server:
 ```bash
 cd frontend
 npm install
 npm start
 ```
-
-Navigate to `http://localhost:3000` in your browser. Create an account via the Sign Up page to access the PolicyIQ dashboard!
+Open `http://localhost:3000` to interact with the full-stack portal.
 
 ---
 
 ## 🔒 Security Note
-This project utilizes `.env` files for managing secrets (e.g., JWT signing keys, PostgreSQL credentials). Ensure you copy `backend/.env.example` to `backend/.env` and update the values before deploying to production.
+Ensure `backend/.env` is configured with valid credentials matching your local PostgreSQL setup and a secure JWT secret before deploying.
