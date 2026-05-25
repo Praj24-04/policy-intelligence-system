@@ -74,6 +74,7 @@ async def upload_policy_pdf(
         "year": metadata["year"],
         "tags": metadata["tags"],
         "extracted_countries": extracted_countries,
+        "detected_sector": recommendations.get("detected_sector"),
         "content_preview": text[:500] + "..." if len(text) > 500 else text,
         "word_count": len(text.split()),
         "recommendations": recommendations["recommendations"],

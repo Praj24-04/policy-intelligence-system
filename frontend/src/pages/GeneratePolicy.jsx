@@ -173,29 +173,40 @@ export default function GeneratePolicy() {
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
-          fontSize: "10px",
+          gap: "6px",
+          fontSize: "11px",
           fontFamily: "'JetBrains Mono', monospace",
-          color: "#9ca3af",
+          color: "var(--text-dim)",
           textTransform: "uppercase",
-          letterSpacing: "0.1em",
-          marginBottom: "12px"
+          letterSpacing: "1.5px",
+          marginBottom: "14px"
         }}>
-          <span style={{ color: "#5c9e2e" }}>●</span> Discover / Creation
+          <span style={{
+            width: "6px",
+            height: "6px",
+            background: "#5c9e2e",
+            display: "inline-block",
+            borderRadius: "1px"
+          }} /> Discover / Creation
         </div>
         <h1 style={{
-          fontSize: "28px",
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: "52px",
           fontWeight: 700,
-          letterSpacing: "-0.02em",
-          marginBottom: "8px",
-          fontFamily: "'DM Sans', sans-serif"
+          color: "var(--text-main)",
+          margin: "0 0 16px 0",
+          letterSpacing: "-1.5px",
+          lineHeight: "1.1"
         }}>
-          Draft new policies.
+          Draft new <span className="half-highlight-custom">policies.</span>
         </h1>
         <p style={{
-          fontSize: "13px",
-          color: "#6b7280",
-          lineHeight: "1.6"
+          fontFamily: "'DM Sans', sans-serif",
+          color: "var(--text-muted)",
+          fontSize: "16px",
+          margin: 0,
+          maxWidth: "600px",
+          lineHeight: 1.5
         }}>
           Generate a professionally structured policy framework template tailored to a country's regulatory context and identified gaps.
         </p>
@@ -215,9 +226,9 @@ export default function GeneratePolicy() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#b91c1c" }}>
             <AlertTriangle size={18} />
-            <span style={{ fontWeight: 600, fontSize: "14px" }}>Generation Pipeline Issue</span>
+            <span style={{ fontWeight: 600, fontSize: "15px" }}>Generation Pipeline Issue</span>
           </div>
-          <p style={{ fontSize: "13px", color: "#7f1d1d", lineHeight: "1.5" }}>
+          <p style={{ fontSize: "14.5px", color: "#7f1d1d", lineHeight: "1.5" }}>
             {error}
           </p>
           <button
@@ -229,7 +240,7 @@ export default function GeneratePolicy() {
               border: "none",
               borderRadius: "6px",
               padding: "8px 16px",
-              fontSize: "12px",
+              fontSize: "13.5px",
               fontWeight: 600,
               cursor: "pointer",
               transition: "background 0.2s"
@@ -260,7 +271,7 @@ export default function GeneratePolicy() {
               gap: "12px",
               marginBottom: "20px"
             }}>
-              <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em" }}>01 CONFIGURE</span>
+              <span style={{ fontSize: "11.5px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "1.2px" }}>01 CONFIGURE</span>
               <div style={{ flex: 1, height: "1px", background: "#f0f0f0" }} />
             </div>
 
@@ -271,7 +282,7 @@ export default function GeneratePolicy() {
                 <div>
                   <label style={{
                     display: "block",
-                    fontSize: "10px",
+                    fontSize: "11px",
                     fontFamily: "'JetBrains Mono', monospace",
                     color: "#9ca3af",
                     letterSpacing: "0.08em",
@@ -282,11 +293,11 @@ export default function GeneratePolicy() {
                     onChange={(e) => setCountry(e.target.value)}
                     style={{
                       width: "100%",
-                      height: "40px",
+                      height: "44px",
                       border: "1px solid #e8e8e8",
                       borderRadius: "6px",
                       padding: "0 12px",
-                      fontSize: "13px",
+                      fontSize: "15px",
                       fontFamily: "'DM Sans', sans-serif",
                       color: "#0a0a0a",
                       background: "#ffffff",
@@ -314,7 +325,7 @@ export default function GeneratePolicy() {
                 <div>
                   <label style={{
                     display: "block",
-                    fontSize: "10px",
+                    fontSize: "11px",
                     fontFamily: "'JetBrains Mono', monospace",
                     color: "#9ca3af",
                     letterSpacing: "0.08em",
@@ -325,11 +336,11 @@ export default function GeneratePolicy() {
                     onChange={(e) => setSector(e.target.value)}
                     style={{
                       width: "100%",
-                      height: "40px",
+                      height: "44px",
                       border: "1px solid #e8e8e8",
                       borderRadius: "6px",
                       padding: "0 12px",
-                      fontSize: "13px",
+                      fontSize: "15px",
                       fontFamily: "'DM Sans', sans-serif",
                       color: "#0a0a0a",
                       background: "#ffffff",
@@ -358,7 +369,7 @@ export default function GeneratePolicy() {
               <div>
                 <label style={{
                   display: "block",
-                  fontSize: "10px",
+                  fontSize: "11px",
                   fontFamily: "'JetBrains Mono', monospace",
                   color: "#9ca3af",
                   letterSpacing: "0.08em",
@@ -371,11 +382,11 @@ export default function GeneratePolicy() {
                   onChange={(e) => setFocusAreas(e.target.value)}
                   style={{
                     width: "100%",
-                    height: "40px",
+                    height: "44px",
                     border: "1px solid #e8e8e8",
                     borderRadius: "6px",
                     padding: "0 12px",
-                    fontSize: "13px",
+                    fontSize: "15px",
                     fontFamily: "'DM Sans', sans-serif",
                     color: "#0a0a0a",
                     background: "#ffffff",
@@ -392,7 +403,7 @@ export default function GeneratePolicy() {
                     e.target.style.boxShadow = "none";
                   }}
                 />
-                <span style={{ display: "block", fontSize: "11px", color: "#9ca3af", marginTop: "6px" }}>
+                <span style={{ display: "block", fontSize: "13px", color: "#9ca3af", marginTop: "6px" }}>
                   Provide comma-separated keywords. Leave blank to auto-detect optimal coverage parameters.
                 </span>
               </div>
@@ -404,12 +415,12 @@ export default function GeneratePolicy() {
                 style={{
                   marginTop: "8px",
                   width: "100%",
-                  height: "44px",
+                  height: "48px",
                   background: (!country || !sector) ? "#e8e8e8" : "#0a0a0a",
                   color: (!country || !sector) ? "#9ca3af" : "#ffffff",
                   border: "none",
                   borderRadius: "6px",
-                  fontSize: "13px",
+                  fontSize: "15px",
                   fontFamily: "'DM Sans', sans-serif",
                   fontWeight: 600,
                   cursor: (!country || !sector) ? "not-allowed" : "pointer",
@@ -463,7 +474,7 @@ export default function GeneratePolicy() {
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
-                  fontSize: "10px",
+                  fontSize: "11px",
                   fontFamily: "'JetBrains Mono', monospace",
                   color: "#9ca3af",
                   textTransform: "uppercase",
@@ -471,7 +482,7 @@ export default function GeneratePolicy() {
                 }}>
                   <span style={{ color: "#5c9e2e", fontSize: "14px" }}>●</span> Intelligence Context
                 </div>
-                <span style={{ fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#6b7280", background: "#ffffff", padding: "3px 8px", borderRadius: "4px", border: "1px solid #e8e8e8" }}>
+                <span style={{ fontSize: "12px", fontFamily: "'JetBrains Mono', monospace", color: "#6b7280", background: "#ffffff", padding: "3px 8px", borderRadius: "4px", border: "1px solid #e8e8e8" }}>
                   Live Data Sync
                 </span>
               </div>
@@ -481,11 +492,11 @@ export default function GeneratePolicy() {
                 {/* Left Col - Country profile */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                   <div>
-                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
+                    <span style={{ display: "block", fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
                       REGULATORY MATURITY
                     </span>
                     <span style={{
-                      fontSize: "12px",
+                      fontSize: "13.5px",
                       fontFamily: "'JetBrains Mono', monospace",
                       fontWeight: 600,
                       color: "#0a0a0a",
@@ -500,14 +511,14 @@ export default function GeneratePolicy() {
                   </div>
 
                   <div>
-                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "6px" }}>
+                    <span style={{ display: "block", fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "6px" }}>
                       EXISTING COVERED SECTORS
                     </span>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                       {contextPreview.existing_sectors && contextPreview.existing_sectors.length > 0 ? (
                         contextPreview.existing_sectors.map((s) => (
                           <span key={s} style={{
-                            fontSize: "11px",
+                            fontSize: "13px",
                             color: "#374151",
                             background: "#ffffff",
                             border: "1px solid #e8e8e8",
@@ -516,16 +527,16 @@ export default function GeneratePolicy() {
                           }}>{s}</span>
                         ))
                       ) : (
-                        <span style={{ fontSize: "12px", color: "#6b7280", fontStyle: "italic" }}>None listed</span>
+                        <span style={{ fontSize: "13px", color: "#6b7280", fontStyle: "italic" }}>None listed</span>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
+                    <span style={{ display: "block", fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
                       PRIORITY NEEDS
                     </span>
-                    <span style={{ fontSize: "12px", color: "#374151", lineHeight: "1.5" }}>
+                    <span style={{ fontSize: "14px", color: "#374151", lineHeight: "1.5" }}>
                       {contextPreview.priority_needs ? contextPreview.priority_needs.join(", ") : "Cybersecurity controls and regional framework guidelines."}
                     </span>
                   </div>
@@ -534,10 +545,10 @@ export default function GeneratePolicy() {
                 {/* Right Col - DB findings */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                   <div>
-                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
+                    <span style={{ display: "block", fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
                       EXISTING {sector.toUpperCase()} POLICIES
                     </span>
-                    <span style={{ fontSize: "12px", color: "#374151", fontWeight: 500 }}>
+                    <span style={{ fontSize: "14px", color: "#374151", fontWeight: 500 }}>
                       {contextPreview.existing_count > 0 ? (
                         <span style={{ color: "#5c9e2e" }}>✓ {contextPreview.existing_count} policies found in database</span>
                       ) : (
@@ -547,16 +558,16 @@ export default function GeneratePolicy() {
                   </div>
 
                   <div>
-                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
+                    <span style={{ display: "block", fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "4px" }}>
                       SEMANTIC REFERENCES
                     </span>
-                    <span style={{ fontSize: "12px", color: "#374151" }}>
+                    <span style={{ fontSize: "14px", color: "#374151" }}>
                       Top 5 matching frameworks from other jurisdictions will serve as drafting blueprints.
                     </span>
                   </div>
 
                   <div>
-                    <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "6px" }}>
+                    <span style={{ display: "block", fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.05em", marginBottom: "6px" }}>
                       IDENTIFIED GAPS TO RESOLVE
                     </span>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -565,7 +576,7 @@ export default function GeneratePolicy() {
                           <span
                             key={gap}
                             style={{
-                              fontSize: "11px",
+                              fontSize: "13px",
                               color: "#856404",
                               background: "#fff3cd",
                               border: "1px solid #ffeaa7",
@@ -577,7 +588,7 @@ export default function GeneratePolicy() {
                           </span>
                         ))
                       ) : (
-                        <span style={{ fontSize: "12px", color: "#6b7280", fontStyle: "italic" }}>No outstanding gaps detected</span>
+                        <span style={{ fontSize: "13px", color: "#6b7280", fontStyle: "italic" }}>No outstanding gaps detected</span>
                       )}
                     </div>
                   </div>
@@ -600,7 +611,7 @@ export default function GeneratePolicy() {
         }}>
           <LoadingSpinner label="" />
           <h2 style={{
-            fontSize: "16px",
+            fontSize: "18px",
             fontWeight: 600,
             marginTop: "20px",
             marginBottom: "8px",
@@ -609,7 +620,7 @@ export default function GeneratePolicy() {
             {LOADING_MESSAGES[loadingStep]}
           </h2>
           <p style={{
-            fontSize: "11px",
+            fontSize: "12.5px",
             fontFamily: "'JetBrains Mono', monospace",
             color: "#9ca3af",
             textTransform: "uppercase",
@@ -627,7 +638,7 @@ export default function GeneratePolicy() {
           <div style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "center",
             marginBottom: "20px"
           }}>
             <div>
@@ -642,7 +653,7 @@ export default function GeneratePolicy() {
                 Generated Framework
               </span>
               <h2 style={{
-                fontSize: "18px",
+                fontSize: "22px",
                 fontWeight: 700,
                 color: "#0a0a0a",
                 marginTop: "4px",
@@ -652,7 +663,7 @@ export default function GeneratePolicy() {
               </h2>
             </div>
 
-            <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexShrink: 0 }}>
               <button
                 onClick={resetGenerator}
                 style={{
@@ -683,7 +694,7 @@ export default function GeneratePolicy() {
                   gap: "6px",
                   background: "#0a0a0a",
                   color: "#ffffff",
-                  border: "none",
+                  border: "1px solid transparent",
                   borderRadius: "6px",
                   padding: "8px 16px",
                   fontSize: "12px",
@@ -723,16 +734,16 @@ export default function GeneratePolicy() {
             background: "#ffffff",
             border: "1px solid #e8e8e8",
             borderRadius: "8px",
-            padding: "20px 24px",
+            padding: "24px 28px",
             marginBottom: "24px"
           }}>
-            <span style={{ display: "block", fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px" }}>
+            <span style={{ display: "block", fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em", marginBottom: "12px" }}>
               EXECUTIVE BRIEF & PREAMBLE
             </span>
             <p style={{
-              fontSize: "13px",
+              fontSize: "15px",
               color: "#374151",
-              lineHeight: "1.7",
+              lineHeight: "1.8",
               textAlign: "justify",
               marginBottom: "16px"
             }}>
@@ -740,9 +751,9 @@ export default function GeneratePolicy() {
             </p>
             <div style={{ height: "1px", background: "#f0f0f0", marginBottom: "16px" }} />
             <p style={{
-              fontSize: "13px",
+              fontSize: "14.5px",
               color: "#6b7280",
-              lineHeight: "1.7",
+              lineHeight: "1.8",
               textAlign: "justify",
               fontStyle: "italic"
             }}>
@@ -762,7 +773,7 @@ export default function GeneratePolicy() {
                   marginBottom: "10px"
                 }}>
                   <span style={{
-                    fontSize: "10px",
+                    fontSize: "11px",
                     fontFamily: "'JetBrains Mono', monospace",
                     color: "#5c9e2e",
                     fontWeight: 600,
@@ -772,7 +783,7 @@ export default function GeneratePolicy() {
                   </span>
                   <div style={{ width: "20px", height: "1px", background: "#e8e8e8" }} />
                   <span style={{
-                    fontSize: "13px",
+                    fontSize: "15px",
                     fontWeight: 600,
                     color: "#0a0a0a",
                     fontFamily: "'DM Sans', sans-serif"
@@ -787,12 +798,12 @@ export default function GeneratePolicy() {
                   background: "#ffffff",
                   border: "1px solid #e8e8e8",
                   borderRadius: "8px",
-                  padding: "20px 24px"
+                  padding: "24px 28px"
                 }}>
                   <p style={{
-                    fontSize: "13px",
+                    fontSize: "15px",
                     color: "#374151",
-                    lineHeight: "1.75",
+                    lineHeight: "1.8",
                     textAlign: "justify",
                     margin: 0
                   }}>
@@ -802,33 +813,33 @@ export default function GeneratePolicy() {
                   {/* Subsections if they exist */}
                   {section.subsections && section.subsections.length > 0 && (
                     <div style={{
-                      marginTop: "16px",
+                      marginTop: "18px",
                       display: "flex",
                       flexDirection: "column",
-                      gap: "12px",
+                      gap: "14px",
                       borderTop: "1px solid #f3f4f6",
-                      paddingTop: "16px"
+                      paddingTop: "18px"
                     }}>
                       {section.subsections.map((sub) => (
                         <div key={sub.number}>
                           <h4 style={{
-                            fontSize: "12px",
+                            fontSize: "14px",
                             fontWeight: 600,
                             color: "#0a0a0a",
                             marginTop: 0,
-                            marginBottom: "4px",
-                            borderLeft: "2.5px solid #5c9e2e",
-                            paddingLeft: "8px"
+                            marginBottom: "6px",
+                            borderLeft: "3px solid #5c9e2e",
+                            paddingLeft: "10px"
                           }}>
                             {sub.number} {sub.title}
                           </h4>
                           <p style={{
-                            fontSize: "12.5px",
+                            fontSize: "14.2px",
                             color: "#4b5563",
-                            lineHeight: "1.65",
+                            lineHeight: "1.75",
                             textAlign: "justify",
                             margin: 0,
-                            paddingLeft: "10.5px"
+                            paddingLeft: "13px"
                           }}>
                             {sub.content}
                           </p>
@@ -850,7 +861,7 @@ export default function GeneratePolicy() {
                 gap: "12px",
                 marginBottom: "16px"
               }}>
-                <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em" }}>IMPLEMENTATION TIMELINE</span>
+                <span style={{ fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em" }}>IMPLEMENTATION TIMELINE</span>
                 <div style={{ flex: 1, height: "1px", background: "#f0f0f0" }} />
               </div>
 
@@ -866,11 +877,11 @@ export default function GeneratePolicy() {
                       background: "#ffffff",
                       border: "1px solid #e8e8e8",
                       borderRadius: "8px",
-                      padding: "16px 20px"
+                      padding: "18px 22px"
                     }}
                   >
                     <div style={{
-                      fontSize: "11px",
+                      fontSize: "12px",
                       fontFamily: "'JetBrains Mono', monospace",
                       fontWeight: 600,
                       color: "#0a0a0a",
@@ -886,9 +897,9 @@ export default function GeneratePolicy() {
                     <ul style={{
                       margin: 0,
                       paddingLeft: "14px",
-                      fontSize: "12px",
+                      fontSize: "13.5px",
                       color: "#4b5563",
-                      lineHeight: "1.6",
+                      lineHeight: "1.75",
                       listStyleType: "square"
                     }}>
                       {phase.actions.map((act, j) => (
@@ -910,7 +921,7 @@ export default function GeneratePolicy() {
                 gap: "12px",
                 marginBottom: "16px"
               }}>
-                <span style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em" }}>REFERENCES & BASIS</span>
+                <span style={{ fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#9ca3af", letterSpacing: "0.08em" }}>REFERENCES & BASIS</span>
                 <div style={{ flex: 1, height: "1px", background: "#f0f0f0" }} />
               </div>
 
@@ -918,7 +929,7 @@ export default function GeneratePolicy() {
                 background: "#ffffff",
                 border: "1px solid #e8e8e8",
                 borderRadius: "8px",
-                padding: "12px 20px"
+                padding: "14px 22px"
               }}>
                 {result.document.references.map((ref, i) => (
                   <div
@@ -926,13 +937,13 @@ export default function GeneratePolicy() {
                     style={{
                       display: "flex",
                       alignItems: "flex-start",
-                      gap: "12px",
-                      padding: "10px 0",
+                      gap: "14px",
+                      padding: "12px 0",
                       borderBottom: i < result.document.references.length - 1 ? "1px solid #f3f4f6" : "none"
                     }}
                   >
                     <span style={{
-                      fontSize: "10px",
+                      fontSize: "11px",
                       fontFamily: "'JetBrains Mono', monospace",
                       color: "#5c9e2e",
                       fontWeight: 600,
@@ -942,13 +953,13 @@ export default function GeneratePolicy() {
                       [{ref.id}]
                     </span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: "12.5px", fontWeight: 500, color: "#0a0a0a" }}>
+                      <div style={{ fontSize: "13.5px", fontWeight: 500, color: "#0a0a0a" }}>
                         {ref.title}
                       </div>
-                      <div style={{ fontSize: "11px", color: "#9ca3af", fontFamily: "'JetBrains Mono', monospace", marginTop: "2px" }}>
+                      <div style={{ fontSize: "11.5px", color: "#9ca3af", fontFamily: "'JetBrains Mono', monospace", marginTop: "2px" }}>
                         {ref.country} ({ref.year})
                       </div>
-                      <div style={{ fontSize: "11.5px", color: "#6b7280", marginTop: "3px" }}>
+                      <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "4px" }}>
                         {ref.relevance}
                       </div>
                     </div>

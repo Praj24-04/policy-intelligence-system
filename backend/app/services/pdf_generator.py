@@ -388,3 +388,374 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
     buffer.seek(0)
     pdf_bytes = buffer.read()
     return pdf_bytes
+
+def generate_comparison_pdf(comp_data: dict) -> bytes:
+    """
+    Generates a professional side-by-side coherence and gap comparison report between two policies.
+    """
+    p1 = comp_data.get("policy_1", comp_data.get("policy1", {}))
+    p2 = comp_data.get("policy_2", comp_data.get("policy2", {}))
+    p1_title = p1.get("title", "Policy A")
+    p2_title = p2.get("title", "Policy B")
+    p1_country = p1.get("country", "Jurisdiction A")
+    p2_country = p2.get("country", "Jurisdiction B")
+    p1_sector = p1.get("sector", "Universal")
+    p2_sector = p2.get("sector", "Universal")
+    p1_year = p1.get("year", "N/A")
+    p2_year = p2.get("year", "N/A")
+
+    metrics = comp_data.get("overall_metrics", {})
+    composite = metrics.get("composite_score", 0.0)
+    sim_label = metrics.get("similarity_label", "Moderate")
+
+    shared = comp_data.get("shared_tags", [])
+    only1 = comp_data.get("only_policy1_tags", [])
+    only2 = comp_data.get("only_policy2_tags", [])
+    recs = comp_data.get("recs_and_alignment") or comp_data.get("insights") or "No custom alignment advice calculated."
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=2.5*cm,
+        rightMargin=2.5*cm,
+        topMargin=2*cm,
+        bottomMargin=2.5*cm,
+        title=f"Coherence Comparison: {p1_country} vs {p2_country}",
+        author="PolicyIQ Intelligence Platform",
+        subject="Regulatory Policy Coherence and Gap Alignment Audit"
+    )
+
+    styles = {
+        "Title": ParagraphStyle("T", fontName="Helvetica-Bold", fontSize=20, textColor=COLOR_BLACK, spaceAfter=12, leading=26),
+        "Subtitle": ParagraphStyle("S", fontName="Helvetica", fontSize=11, textColor=COLOR_MID, spaceAfter=8, leading=16),
+        "SecNum": ParagraphStyle("SN", fontName="Helvetica-Bold", fontSize=9, textColor=COLOR_ACCENT, spaceAfter=2, leading=11),
+        "SecTitle": ParagraphStyle("ST", fontName="Helvetica-Bold", fontSize=13, textColor=COLOR_BLACK, spaceAfter=6, spaceBefore=12, leading=16),
+        "Body": ParagraphStyle("B", fontName="Helvetica", fontSize=10, textColor=COLOR_DARK, spaceAfter=8, leading=15),
+        "Mono": ParagraphStyle("M", fontName="Courier", fontSize=8, textColor=COLOR_MID, spaceAfter=2, leading=10)
+    }
+
+    story = []
+
+    # COVER PAGE
+    story.append(HRFlowable(width="100%", thickness=4, color=COLOR_ACCENT, spaceAfter=20))
+    story.append(Table([[Paragraph("REGULATORY COMPARISON & COHERENCE REPORT", styles["Mono"])]], colWidths=[9*cm], style=TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_BG),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('BOX', (0,0), (-1,-1), 0.5, COLOR_RULE),
+    ])))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("POLICYIQ ALIGNMENT ENGINE", styles["Mono"]))
+    story.append(Paragraph(f"COMPARISON AUDIT REPORT", styles["Title"]))
+    story.append(Paragraph(f"An automated cross-jurisdiction semantic coherence and regulatory gap audit comparing policies in the {p1_sector} domain.", styles["Subtitle"]))
+    story.append(Spacer(1, 16))
+
+    # Meta Comparison Table
+    meta_rows = [
+        [Paragraph("COMPLETED JURISDICTIONS", styles["Mono"]), Paragraph(f"<b>Policy A:</b> {p1_country} ({p1_year})<br/><b>Policy B:</b> {p2_country} ({p2_year})", styles["Body"])],
+        [Paragraph("POLICY A TITLE", styles["Mono"]), Paragraph(p1_title, styles["Body"])],
+        [Paragraph("POLICY B TITLE", styles["Mono"]), Paragraph(p2_title, styles["Body"])],
+        [Paragraph("COMPOSITE SIMILARITY", styles["Mono"]), Paragraph(f"<b>{int(composite * 100)}%</b> — {sim_label.upper()} ALIGNMENT", styles["Body"])],
+        [Paragraph("GENERATED TIMESTAMP", styles["Mono"]), Paragraph(datetime.now().strftime("%B %d, %Y"), styles["Body"])],
+    ]
+    meta_table = Table(meta_rows, colWidths=[5*cm, 11*cm])
+    meta_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_RULE),
+        ('ROWBACKGROUNDS', (0,0), (-1,-1), [colors.white, COLOR_BG])
+    ]))
+    story.append(meta_table)
+    story.append(Spacer(1, 24))
+
+    # Verdict Box
+    verdict_text = ""
+    if composite > 0.8: verdict_text = "These policies are nearly identical in approach and coverage. Compliance with one substantially satisfies the other."
+    elif composite > 0.65: verdict_text = "Strong alignment exists on core principles. Key differences lie in enforcement mechanisms and jurisdictional scope."
+    elif composite > 0.5: verdict_text = "Moderate overlap with meaningful divergence. Shared values but distinct implementation approaches reflect different regulatory contexts."
+    elif composite > 0.35: verdict_text = "Limited alignment. These policies address related domains but through fundamentally different frameworks and priorities."
+    else: verdict_text = "Distinct approaches. These policies represent contrasting regulatory philosophies and are best understood as complementary rather than comparable."
+
+    verdict_rows = [
+        [Paragraph("POLICYIQ ALIGNMENT VERDICT", styles["Mono"])],
+        [Paragraph(f"<b>Summary:</b> {verdict_text}", styles["Body"])]
+    ]
+    verdict_table = Table(verdict_rows, colWidths=[16*cm])
+    verdict_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_BG),
+        ('PADDING', (0,0), (-1,-1), 12),
+        ('BOX', (0,0), (-1,-1), 0.5, COLOR_RULE),
+    ]))
+    story.append(verdict_table)
+    story.append(PageBreak())
+
+    # PAGE 2: METRICS & SHARED COVERAGE
+    story.append(Paragraph("01 OVERALL ALIGNMENT METRICS", styles["SecNum"]))
+    story.append(HRFlowable(width="100%", thickness=1, color=COLOR_RULE, spaceAfter=8))
+    
+    metric_rows = [
+        [Paragraph("METRIC TYPE", styles["Mono"]), Paragraph("CORRESPONDING ALIGNMENT VALUE", styles["Mono"])],
+        [Paragraph("Semantic Intent Similarity", styles["Body"]), Paragraph(f"{int(metrics.get('semantic_similarity_score', composite) * 100)}%", styles["Body"])],
+        [Paragraph("Structural Provisions Similarity", styles["Body"]), Paragraph(f"{int(metrics.get('structured_similarity_score', composite) * 100)}%", styles["Body"])],
+        [Paragraph("Entity Overlap Weight", styles["Body"]), Paragraph(f"{int(metrics.get('entity_overlap_score', composite) * 100)}%", styles["Body"])],
+        [Paragraph("<b>Composite Coherence Score</b>", styles["Body"]), Paragraph(f"<b>{int(composite * 100)}% ({sim_label})</b>", styles["Body"])],
+    ]
+    metric_table = Table(metric_rows, colWidths=[8*cm, 8*cm])
+    metric_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_RULE),
+        ('BACKGROUND', (0,0), (-1,0), COLOR_BG)
+    ]))
+    story.append(metric_table)
+    story.append(Spacer(1, 16))
+
+    story.append(Paragraph("02 SHARED REGULATORY COVERAGE", styles["SecNum"]))
+    story.append(HRFlowable(width="100%", thickness=1, color=COLOR_RULE, spaceAfter=8))
+    
+    if shared:
+        shared_text = ", ".join([s.upper() for s in shared])
+        story.append(Paragraph(f"Both regulatory frameworks establish parallel clauses addressing the following domains:<br/><br/><b>{shared_text}</b>", styles["Body"]))
+        story.append(Spacer(1, 10))
+        story.append(Paragraph("Compliance Synergy: Systems satisfying these overlapping obligations are automatically compliant across both jurisdictions.", styles["Body"]))
+    else:
+        story.append(Paragraph("No direct shared compliance tags discovered between these frameworks.", styles["Body"]))
+        
+    story.append(PageBreak())
+
+    # PAGE 3: COVERAGE GAPS & DIVERGENCE
+    story.append(Paragraph("03 UNIQUE PROVISIONS & DIVERGENCES", styles["SecNum"]))
+    story.append(HRFlowable(width="100%", thickness=1, color=COLOR_RULE, spaceAfter=8))
+
+    gap_data = [
+        [Paragraph(f"UNIQUE TO JURISDICTION A ({p1_country})", styles["Mono"]), Paragraph(f"UNIQUE TO JURISDICTION B ({p2_country})", styles["Mono"])]
+    ]
+    
+    p1_unique_cells = []
+    if only1:
+        for t in only1:
+            p1_unique_cells.append(f"• {t.capitalize()}")
+    else:
+        p1_unique_cells.append("No completely unique clauses detected.")
+        
+    p2_unique_cells = []
+    if only2:
+        for t in only2:
+            p2_unique_cells.append(f"• {t.capitalize()}")
+    else:
+        p2_unique_cells.append("No completely unique clauses detected.")
+        
+    gap_data.append([
+        Paragraph("<br/>".join(p1_unique_cells), styles["Body"]),
+        Paragraph("<br/>".join(p2_unique_cells), styles["Body"])
+    ])
+    
+    gap_table = Table(gap_data, colWidths=[8*cm, 8*cm])
+    gap_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+        ('TOPPADDING', (0,0), (-1,-1), 10),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_RULE),
+        ('BACKGROUND', (0,0), (-1,0), COLOR_BG)
+    ]))
+    story.append(gap_table)
+    story.append(Spacer(1, 18))
+
+    story.append(Paragraph("04 RECOMMENDED ALIGNMENT ADVICE", styles["SecNum"]))
+    story.append(HRFlowable(width="100%", thickness=1, color=COLOR_RULE, spaceAfter=8))
+    
+    if isinstance(recs, list):
+        for rec in recs:
+            story.append(Paragraph(f"→ {rec}", styles["Body"]))
+    else:
+        story.append(Paragraph(recs, styles["Body"]))
+
+    def add_page_decor(canvas, doc_obj):
+        canvas.saveState()
+        if doc_obj.page > 1:
+            canvas.setFont('Courier', 8)
+            canvas.setFillColor(COLOR_LIGHT)
+            canvas.drawString(2.5*cm, 28.2*cm, "POLICYIQ COHERENCE COMPARISON")
+            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 28.2*cm, f"{p1_country.upper()} VS {p2_country.upper()}")
+            canvas.setStrokeColor(COLOR_RULE)
+            canvas.setLineWidth(0.5)
+            canvas.line(2.5*cm, 28.0*cm, doc_obj.pagesize[0] - 2.5*cm, 28.0*cm)
+            canvas.line(2.5*cm, 2.0*cm, doc_obj.pagesize[0] - 2.5*cm, 2.0*cm)
+            canvas.drawString(2.5*cm, 1.6*cm, "PolicyIQ Alignment Engine")
+            canvas.drawCentredString(doc_obj.pagesize[0] / 2.0, 1.6*cm, f"Page {doc_obj.page}")
+            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 1.6*cm, f"{sim_label.upper()} COHERENCE")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=add_page_decor, onLaterPages=add_page_decor)
+    buffer.seek(0)
+    return buffer.read()
+
+def generate_recommendations_pdf(rec_data: dict) -> bytes:
+    """
+    Generates a professional 5-factor machine learning cross-border adoption recommendation report.
+    """
+    src_pol = rec_data.get("source_policy", {})
+    src_title = src_pol.get("title", "Source Policy")
+    src_country = src_pol.get("country", "Origin")
+    src_sector = src_pol.get("sector", "Universal")
+    src_year = src_pol.get("year", "N/A")
+
+    weights = rec_data.get("weights", {})
+    recs = rec_data.get("recommendations", [])
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=2.5*cm,
+        rightMargin=2.5*cm,
+        topMargin=2*cm,
+        bottomMargin=2.5*cm,
+        title=f"Adoption Recommendations: {src_title}",
+        author="PolicyIQ Intelligence Platform",
+        subject="Policy Cross-Border Adoption Feasibility & Gap Study"
+    )
+
+    styles = {
+        "Title": ParagraphStyle("T", fontName="Helvetica-Bold", fontSize=20, textColor=COLOR_BLACK, spaceAfter=12, leading=26),
+        "Subtitle": ParagraphStyle("S", fontName="Helvetica", fontSize=11, textColor=COLOR_MID, spaceAfter=8, leading=16),
+        "SecNum": ParagraphStyle("SN", fontName="Helvetica-Bold", fontSize=9, textColor=COLOR_ACCENT, spaceAfter=2, leading=11),
+        "SecTitle": ParagraphStyle("ST", fontName="Helvetica-Bold", fontSize=13, textColor=COLOR_BLACK, spaceAfter=6, spaceBefore=12, leading=16),
+        "Body": ParagraphStyle("B", fontName="Helvetica", fontSize=10, textColor=COLOR_DARK, spaceAfter=8, leading=15),
+        "Mono": ParagraphStyle("M", fontName="Courier", fontSize=8, textColor=COLOR_MID, spaceAfter=2, leading=10)
+    }
+
+    story = []
+
+    # COVER PAGE
+    story.append(HRFlowable(width="100%", thickness=4, color=COLOR_ACCENT, spaceAfter=20))
+    story.append(Table([[Paragraph("POLICY ADOPTION FEASIBILITY STUDY", styles["Mono"])]], colWidths=[7.5*cm], style=TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_BG),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('BOX', (0,0), (-1,-1), 0.5, COLOR_RULE),
+    ])))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("POLICYIQ DECISION INTELLIGENCE", styles["Mono"]))
+    story.append(Paragraph(f"ADOPTION FEASIBILITY BRIEF", styles["Title"]))
+    story.append(Paragraph(f"A 5-factor machine learning evaluation identifying global jurisdictions with the highest priority gaps and compatibility readiness to adopt the target framework.", styles["Subtitle"]))
+    story.append(Spacer(1, 16))
+
+    # Meta Info Table
+    meta_rows = [
+        [Paragraph("SOURCE FRAMEWORK", styles["Mono"]), Paragraph(f"<b>{src_title}</b>", styles["Body"])],
+        [Paragraph("ORIGIN JURISDICTION", styles["Mono"]), Paragraph(f"{src_country} ({src_year})", styles["Body"])],
+        [Paragraph("SECTOR DOMAIN", styles["Mono"]), Paragraph(src_sector, styles["Body"])],
+        [Paragraph("FACTOR WEIGHTS APPLIED", styles["Mono"]), Paragraph(f"Gap Severity: {int(weights.get('sector_gap', 0.35)*100)}% | Infrastructure: {int(weights.get('regulatory_maturity', 0.25)*100)}%<br/>Intent Match: {int(weights.get('semantic_need', 0.20)*100)}% | Geopolitical Peer: {int(weights.get('regional_pressure', 0.12)*100)}%<br/>Developmental: {int(weights.get('economic_tier', 0.08)*100)}%", styles["Body"])],
+        [Paragraph("ANALYSIS TIMESTAMP", styles["Mono"]), Paragraph(datetime.now().strftime("%B %d, %Y"), styles["Body"])],
+    ]
+    meta_table = Table(meta_rows, colWidths=[5*cm, 11*cm])
+    meta_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_RULE),
+        ('ROWBACKGROUNDS', (0,0), (-1,-1), [colors.white, COLOR_BG])
+    ]))
+    story.append(meta_table)
+    story.append(Spacer(1, 24))
+
+    # Overview text
+    story.append(Paragraph("<b>Evaluation Posture:</b> This analytical feasibility study maps domestic regulatory deficits across other sovereign entities, assessing where the source guidelines address urgent legal omissions while fitting the target country's active technological and economic ecosystem.", styles["Body"]))
+    story.append(PageBreak())
+
+    # PAGE 2: TOP RECOMMENDED JURISDICTIONS
+    story.append(Paragraph("01 TOP JURISDICTION ADOPTION PRIORITIES", styles["SecNum"]))
+    story.append(HRFlowable(width="100%", thickness=1, color=COLOR_RULE, spaceAfter=8))
+    
+    rec_headers = [
+        [Paragraph("RANK", styles["Mono"]), Paragraph("COUNTRY/JURISDICTION", styles["Mono"]), Paragraph("NEED SCORE", styles["Mono"]), Paragraph("ACTIVE GAP STATE", styles["Mono"]), Paragraph("MATURITY", styles["Mono"])]
+    ]
+    for idx, r in enumerate(recs, 1):
+        score_num = r.get("need_score", r.get("overall_score", r.get("score", 0)))
+        score_val = f"{int(score_num * 100)}%"
+        
+        has_sector = r.get("already_has_sector", False)
+        gap_state = "Framework Enhancement" if has_sector else "GAP DETECTED (High Need)"
+        
+        maturity = r.get("regulatory_maturity", r.get("maturity_level", "Developing")).upper()
+        
+        rec_headers.append([
+            Paragraph(f"#{idx}", styles["Body"]),
+            Paragraph(f"<b>{r.get('country')}</b>", styles["Body"]),
+            Paragraph(score_val, styles["Body"]),
+            Paragraph(gap_state, styles["Body"]),
+            Paragraph(maturity, styles["Body"])
+        ])
+        
+    rec_table = Table(rec_headers, colWidths=[1.5*cm, 5.0*cm, 2.5*cm, 4.5*cm, 2.5*cm])
+    rec_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_RULE),
+        ('BACKGROUND', (0,0), (-1,0), COLOR_BG)
+    ]))
+    story.append(rec_table)
+    story.append(Spacer(1, 16))
+
+    # PAGE 3+: JURISDICTION ANALYSIS SHEETS
+    story.append(PageBreak())
+    story.append(Paragraph("02 TARGET FEASIBILITY PROFILES & DETAILS", styles["SecNum"]))
+    story.append(HRFlowable(width="100%", thickness=1, color=COLOR_RULE, spaceAfter=12))
+
+    for idx, r in enumerate(recs[:4], 1):
+        country_name = r.get("country")
+        score_num = r.get("need_score", r.get("overall_score", r.get("score", 0)))
+        overall_score = f"{int(score_num * 100)}%"
+        
+        story.append(KeepTogether([
+            Paragraph(f"#{idx} PROFILE: {country_name.upper()}  (Need Index: {overall_score})", styles["SecTitle"]),
+            HRFlowable(width="100%", thickness=0.75, color=COLOR_ACCENT, spaceAfter=6)
+        ]))
+        
+        bullets = []
+        
+        # Why this country (Reasoning)
+        reasoning = r.get("reasoning")
+        if reasoning:
+            bullets.append(f"<b>Why this country:</b> {reasoning}")
+        else:
+            reasoning_list = r.get("reasoning_steps", r.get("reasons", []))
+            for step_text in reasoning_list:
+                bullets.append(f"• {step_text}")
+        
+        # Expected Benefits
+        benefits = r.get("expected_benefits", [])
+        if benefits:
+            bullets.append("<b>Expected benefits:</b>")
+            for b in benefits:
+                bullets.append(f"  • {b}")
+                
+        if not bullets:
+            bullets.append("• Critical infrastructure lacks standard security baselines in this sector.")
+            bullets.append("• Cross-border alignment with geopolitical peers creates strong adoption pressures.")
+            
+        story.append(Paragraph("<br/>".join(bullets), styles["Body"]))
+        story.append(Spacer(1, 12))
+
+    def add_page_decor(canvas, doc_obj):
+        canvas.saveState()
+        if doc_obj.page > 1:
+            canvas.setFont('Courier', 8)
+            canvas.setFillColor(COLOR_LIGHT)
+            canvas.drawString(2.5*cm, 28.2*cm, "POLICYIQ CROSS-BORDER RECS")
+            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 28.2*cm, f"SOURCE: {src_country.upper()}")
+            canvas.setStrokeColor(COLOR_RULE)
+            canvas.setLineWidth(0.5)
+            canvas.line(2.5*cm, 28.0*cm, doc_obj.pagesize[0] - 2.5*cm, 28.0*cm)
+            canvas.line(2.5*cm, 2.0*cm, doc_obj.pagesize[0] - 2.5*cm, 2.0*cm)
+            canvas.drawString(2.5*cm, 1.6*cm, "PolicyIQ Decision Intelligence")
+            canvas.drawCentredString(doc_obj.pagesize[0] / 2.0, 1.6*cm, f"Page {doc_obj.page}")
+            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 1.6*cm, f"{src_sector.upper()} ADOPTION")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=add_page_decor, onLaterPages=add_page_decor)
+    buffer.seek(0)
+    return buffer.read()

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { fetchPolicies, comparePolicies } from "../services/api";
+import { fetchPolicies, comparePolicies, getToken } from "../services/api";
 import SectorBadge from "../components/SectorBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { GitCompare, CheckCircle2, XCircle, Lightbulb, RotateCcw, FileDown, Search } from "lucide-react";
@@ -54,63 +54,10 @@ export default function Compare() {
     setStep(1);
   };
 
-  const handleDownloadPDF = async () => {
-    const element = reportRef.current;
-    if (!element) return;
-    
-    // Dynamic import to avoid SSR / bundler load constraints
-    const html2pdf = (await import('html2pdf.js')).default;
-    
-    const p1Title = result.policy_1?.title || result.policy1?.title || "PolicyA";
-    const p2Title = result.policy_2?.title || result.policy2?.title || "PolicyB";
-
-    const filename = `PolicyIQ-Comparison-${p1Title
-      .slice(0, 20)
-      .replace(/[^a-z0-9]/gi, '-')}-vs-${p2Title
-      .slice(0, 20)
-      .replace(/[^a-z0-9]/gi, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`;
-    
-    const options = {
-      margin: [15, 15, 15, 15],
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2,
-        useCORS: true,
-        logging: false
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait'
-      },
-      pagebreak: { 
-        mode: ['avoid-all', 'css', 'legacy'],
-        before: '.pdf-page-break'
-      }
-    };
-    
-    const pdfBase64 = await html2pdf().set(options).from(element).output('datauristring');
-    
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "http://localhost:8000/api/generate/download-pdf";
-
-    const base64Input = document.createElement("input");
-    base64Input.type = "hidden";
-    base64Input.name = "base64_data";
-    base64Input.value = pdfBase64;
-    form.appendChild(base64Input);
-
-    const filenameInput = document.createElement("input");
-    filenameInput.type = "hidden";
-    filenameInput.name = "filename";
-    filenameInput.value = filename;
-    form.appendChild(filenameInput);
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+  const handleDownloadPDF = () => {
+    if (!sel1 || !sel2) return;
+    const downloadUrl = `http://localhost:8000/api/compare/download?id1=${sel1.id}&id2=${sel2.id}`;
+    window.open(downloadUrl, '_blank');
   };
 
   // Sector filter list mapping
@@ -770,12 +717,41 @@ export default function Compare() {
                 <div style={{ width: "65%" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
                     {[
-                      { label: "Semantic Similarity", val: result.overall_metrics?.semantic_similarity },
-                      { label: "Cross-Encoder Score", val: result.overall_metrics?.cross_encoder_normalized },
-                      { label: "Coverage Overlap", val: result.overall_metrics?.jaccard_coefficient }
+                      { 
+                        label: "Theme & Concept Match", 
+                        val: result.overall_metrics?.semantic_similarity,
+                        tooltip: "Measures the overlap of overall themes, statutory concepts, and core regulatory intentions between the two documents."
+                      },
+                      { 
+                        label: "Detailed Provision Match", 
+                        val: result.overall_metrics?.cross_encoder_normalized,
+                        tooltip: "A clause-by-clause comparison that evaluates how closely the specific rules and requirements correspond to one another."
+                      },
+                      { 
+                        label: "Regulatory Scope Overlap", 
+                        val: result.overall_metrics?.jaccard_coefficient,
+                        tooltip: "Indicates the proportion of shared operational domains, technology scopes, and target sectors covered by both frameworks."
+                      }
                     ].map((row, rIdx) => (
-                      <div key={rIdx} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <span style={{ fontSize: "12px", fontFamily: "JetBrains Mono", color: "var(--text-muted)", width: "150px" }}>
+                      <div 
+                        key={rIdx} 
+                        title={row.tooltip}
+                        style={{ 
+                          display: "flex", 
+                          alignItems: "center", 
+                          gap: "12px", 
+                          cursor: "help",
+                          padding: "2px 0"
+                        }}
+                      >
+                        <span style={{ 
+                          fontSize: "12px", 
+                          fontFamily: "JetBrains Mono", 
+                          color: "var(--text-muted)", 
+                          width: "205px",
+                          borderBottom: "1px dotted var(--text-muted)",
+                          display: "inline-block"
+                        }}>
                           {row.label}
                         </span>
                         <div style={{ flex: 1, height: "4px", background: "var(--bg-hover)", borderRadius: "2px", overflow: "hidden" }}>

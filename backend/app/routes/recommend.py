@@ -26,6 +26,36 @@ def _parse_weights(
 def clusters():
     return get_cluster_summary()
 
+@router.get("/download/{policy_id}")
+def download_recommendations_pdf(
+    policy_id: str, 
+    top_n: int = 5,
+    w_sector: float = Query(None),
+    w_maturity: float = Query(None),
+    w_semantic: float = Query(None),
+    w_regional: float = Query(None),
+    w_economic: float = Query(None)
+):
+    weights = _parse_weights(w_sector, w_maturity, w_semantic, w_regional, w_economic)
+    res = get_recommendations_v2(policy_id, top_n, weights)
+    
+    from app.ml.recommender_v2 import DEFAULT_WEIGHTS
+    res["weights"] = weights if weights else DEFAULT_WEIGHTS
+    
+    from app.services.pdf_generator import generate_recommendations_pdf
+    from fastapi.responses import Response
+    
+    pdf_bytes = generate_recommendations_pdf(res)
+    
+    filename = f"PolicyIQ_Recommendations_{policy_id[:8]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
+
 @router.get("/v2/{policy_id}")
 def recommend_v2(
     policy_id: str, 

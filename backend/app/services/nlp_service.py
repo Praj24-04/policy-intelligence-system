@@ -35,11 +35,56 @@ KNOWN_COUNTRIES = {
 }
 
 
+import re
+
+# Regex patterns for country abbreviations that spaCy often misses
+# (they appear inside org names like "U.S. Department of Commerce")
+_COUNTRY_PATTERNS = [
+    (re.compile(r'\bU\.S\b\.?|\bUSA\b|\bUnited States\b', re.IGNORECASE), "United States"),
+    (re.compile(r'\bU\.K\b\.?|\bUnited Kingdom\b', re.IGNORECASE), "United Kingdom"),
+    (re.compile(r'\bE\.U\b\.?|\bEuropean Union\b', re.IGNORECASE), "European Union"),
+    (re.compile(r'\bUnited Arab Emirates\b|\bUAE\b', re.IGNORECASE), "United Arab Emirates"),
+    (re.compile(r'\bSouth Korea\b|\bRepublic of Korea\b', re.IGNORECASE), "South Korea"),
+    (re.compile(r'\bNew Zealand\b', re.IGNORECASE), "New Zealand"),
+    (re.compile(r'\bSouth Africa\b', re.IGNORECASE), "South Africa"),
+    (re.compile(r'\bSaudi Arabia\b', re.IGNORECASE), "Saudi Arabia"),
+    (re.compile(r'\b(?<!\w)China\b', re.IGNORECASE), "China"),
+    (re.compile(r'\b(?<!\w)India\b', re.IGNORECASE), "India"),
+    (re.compile(r'\b(?<!\w)Japan\b', re.IGNORECASE), "Japan"),
+    (re.compile(r'\b(?<!\w)Germany\b', re.IGNORECASE), "Germany"),
+    (re.compile(r'\b(?<!\w)France\b', re.IGNORECASE), "France"),
+    (re.compile(r'\b(?<!\w)Canada\b', re.IGNORECASE), "Canada"),
+    (re.compile(r'\b(?<!\w)Australia\b', re.IGNORECASE), "Australia"),
+    (re.compile(r'\b(?<!\w)Singapore\b', re.IGNORECASE), "Singapore"),
+    (re.compile(r'\b(?<!\w)Brazil\b', re.IGNORECASE), "Brazil"),
+    (re.compile(r'\b(?<!\w)Nigeria\b', re.IGNORECASE), "Nigeria"),
+    (re.compile(r'\b(?<!\w)Indonesia\b', re.IGNORECASE), "Indonesia"),
+    (re.compile(r'\b(?<!\w)Kenya\b', re.IGNORECASE), "Kenya"),
+    (re.compile(r'\b(?<!\w)Mexico\b', re.IGNORECASE), "Mexico"),
+    (re.compile(r'\b(?<!\w)Argentina\b', re.IGNORECASE), "Argentina"),
+    (re.compile(r'\b(?<!\w)Russia\b|\bRussian Federation\b', re.IGNORECASE), "Russia"),
+    (re.compile(r'\b(?<!\w)Israel\b', re.IGNORECASE), "Israel"),
+    (re.compile(r'\b(?<!\w)Netherlands\b', re.IGNORECASE), "Netherlands"),
+    (re.compile(r'\b(?<!\w)Sweden\b', re.IGNORECASE), "Sweden"),
+    (re.compile(r'\b(?<!\w)Switzerland\b', re.IGNORECASE), "Switzerland"),
+    (re.compile(r'\b(?<!\w)Italy\b', re.IGNORECASE), "Italy"),
+    (re.compile(r'\b(?<!\w)Spain\b', re.IGNORECASE), "Spain"),
+    (re.compile(r'\b(?<!\w)Poland\b', re.IGNORECASE), "Poland"),
+    (re.compile(r'\b(?<!\w)Turkey\b', re.IGNORECASE), "Turkey"),
+    (re.compile(r'\b(?<!\w)Thailand\b', re.IGNORECASE), "Thailand"),
+    (re.compile(r'\b(?<!\w)Vietnam\b', re.IGNORECASE), "Vietnam"),
+    (re.compile(r'\b(?<!\w)Malaysia\b', re.IGNORECASE), "Malaysia"),
+]
+
+
 def extract_countries(text: str) -> list:
     if not text:
         return []
-    doc = nlp(text)
+
     found = set()
+
+    # 1. spaCy NER pass — catches explicit GPE/LOC/NORP entities
+    doc = nlp(text[:5000])  # limit to first 5000 chars for performance
     for ent in doc.ents:
         if ent.label_ in ("GPE", "LOC", "NORP"):
             name = ent.text.strip()
@@ -48,6 +93,14 @@ def extract_countries(text: str) -> list:
             name = CORRECTIONS.get(name, name)
             if name in KNOWN_COUNTRIES:
                 found.add(name)
+
+    # 2. Regex pass — catches abbreviations inside org names (e.g. "U.S. Department of Commerce")
+    #    Uses a smaller sample of the document for speed
+    sample = text[:3000]
+    for pattern, canonical in _COUNTRY_PATTERNS:
+        if pattern.search(sample):
+            found.add(canonical)
+
     return list(found)
 
 

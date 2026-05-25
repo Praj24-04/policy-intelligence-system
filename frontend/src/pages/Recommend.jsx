@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchPolicies, fetchRecommendations, submitFeedback, generatePolicyTemplate } from "../services/api";
+import { fetchPolicies, fetchRecommendations, submitFeedback, generatePolicyTemplate, getToken } from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { Sparkles, ExternalLink, Copy, ThumbsUp, ThumbsDown, Target, Shield, Search } from "lucide-react";
+import { Sparkles, ExternalLink, Copy, ThumbsUp, ThumbsDown, Target, Shield, Search, FileDown } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { jsPDF } from "jspdf";
 
@@ -158,188 +158,23 @@ export default function Recommend() {
     }));
   };
 
+  const handleDownloadRecsPDF = () => {
+    if (!selected) return;
+    const { sector_gap, regulatory_maturity, semantic_need, regional_pressure, economic_tier } = weights;
+    let url = `http://localhost:8000/api/recommend/download/${selected.id}?top_n=6`;
+    if (sector_gap !== undefined) url += `&w_sector=${sector_gap / 100}`;
+    if (regulatory_maturity !== undefined) url += `&w_maturity=${regulatory_maturity / 100}`;
+    if (semantic_need !== undefined) url += `&w_semantic=${semantic_need / 100}`;
+    if (regional_pressure !== undefined) url += `&w_regional=${regional_pressure / 100}`;
+    if (economic_tier !== undefined) url += `&w_economic=${economic_tier / 100}`;
+
+    window.open(url, '_blank');
+  };
+
   const downloadProposalPDF = (proposalData) => {
-    if (!proposalData) return;
-    const doc = new jsPDF();
-    
-    // Theme Colors
-    const primaryColor = [10, 10, 10]; // slate black
-    const accentColor = [92, 158, 46]; // lime green
-    const textColor = [55, 65, 81]; // grey
-    
-    // Header
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, 210, 35, "F");
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("POLICYIQ AI BRIEF & DRAFT PROPOSAL", 14, 15);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`Generated on ${new Date().toLocaleDateString()} | Confidential Executive Brief`, 14, 25);
-    
-    // Content body
-    doc.setTextColor(...primaryColor);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(proposalData.suggested_title || "Draft Policy Framework", 14, 50);
-    
-    doc.setDrawColor(...accentColor);
-    doc.setLineWidth(1);
-    doc.line(14, 55, 196, 55);
-    
-    // Metadata block
-    doc.setFillColor(250, 250, 250);
-    doc.rect(14, 60, 182, 35, "F");
-    doc.setDrawColor(232, 232, 232);
-    doc.rect(14, 60, 182, 35, "S");
-    
-    doc.setTextColor(...textColor);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text(`TARGET COUNTRY:`, 20, 68);
-    doc.text(`SECTOR:`, 20, 75);
-    doc.text(`REGULATORY MATURITY:`, 20, 82);
-    doc.text(`REGULATORY GAP STATE:`, 20, 89);
-    
-    doc.setFont("helvetica", "normal");
-    doc.text(proposalData.country, 70, 68);
-    doc.text(proposalData.sector, 70, 75);
-    doc.text(proposalData.maturity_level.toUpperCase(), 70, 82);
-    doc.text(proposalData.regulatory_gap ? "GAP IDENTIFIED (No active framework)" : "POTENTIAL ADVANCED ENHANCEMENT", 70, 89);
-    
-    // Priority Needs & Policy Context
-    let y = 110;
-    doc.setTextColor(...primaryColor);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("1. NATIONAL DEVELOPMENT CONTEXT & POLICY GAP", 14, y);
-    y += 8;
-    doc.setTextColor(...textColor);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    const splitContext = doc.splitTextToSize(proposalData.policy_context || "No context provided.", 182);
-    doc.text(splitContext, 14, y);
-    y += splitContext.length * 5 + 10;
-    
-    // Priority Areas
-    doc.setTextColor(...primaryColor);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("2. PRIORITY NEEDS IDENTIFIED", 14, y);
-    y += 8;
-    doc.setTextColor(...textColor);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    (proposalData.priority_areas || []).forEach((area, idx) => {
-      doc.text(`• ${area}`, 18, y);
-      y += 6;
-    });
-    y += 8;
-    
-    // Key Requirements
-    doc.setTextColor(...primaryColor);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("3. KEY RECOMMENDED REGULATORY REQUIREMENTS", 14, y);
-    y += 8;
-    doc.setTextColor(...textColor);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    (proposalData.key_requirements || []).forEach((req, idx) => {
-      doc.text(`${idx + 1}. ${req}`, 18, y);
-      y += 6;
-    });
-    y += 12;
-    
-    // Suggested Sections
-    doc.setTextColor(...primaryColor);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("4. RECOMMENDED STATUTORY SECTIONS", 14, y);
-    y += 8;
-    doc.setTextColor(...textColor);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    (proposalData.recommended_sections || []).forEach((section, idx) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.text(section, 18, y);
-      y += 6;
-    });
-    y += 12;
-    
-    // Implementation Timeline
-    if (y > 250) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.setTextColor(...primaryColor);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("5. PROPOSED IMPLEMENTATION TIMELINE", 14, y);
-    y += 8;
-    doc.setTextColor(...textColor);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    
-    Object.entries(proposalData.implementation_timeline || {}).forEach(([phase, details]) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.setFont("helvetica", "bold");
-      doc.text(`${phase}:`, 18, y);
-      doc.setFont("helvetica", "normal");
-      doc.text(details, 65, y);
-      y += 6;
-    });
-    y += 15;
-    
-    // Cryptographic Verifiability Hash
-    if (y > 260) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.setDrawColor(...accentColor);
-    doc.setLineWidth(0.5);
-    doc.line(14, y, 196, y);
-    y += 8;
-    
-    const verificationHash = "VERIFY-SHA256-" + btoa(proposalData.country + proposalData.sector).slice(0, 16).toUpperCase() + "-" + new Date().getTime().toString().slice(-6);
-    
-    doc.setTextColor(...textColor);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text(`PolicyIQ Cryptographic Assurance Hash: ${verificationHash}`, 14, y);
-    doc.text("Verified secure gazette crawling source integrity - Google DeepMind NLP Engine", 14, y + 4);
-    
-    const pdfBase64 = doc.output("datauristring");
-    const filename = `PolicyIQ_AI_Brief_${proposalData.country.replace(/\s+/g, '_')}_${proposalData.sector.replace(/\s+/g, '_')}.pdf`;
-
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "http://localhost:8000/api/generate/download-pdf";
-
-    const base64Input = document.createElement("input");
-    base64Input.type = "hidden";
-    base64Input.name = "base64_data";
-    base64Input.value = pdfBase64;
-    form.appendChild(base64Input);
-
-    const filenameInput = document.createElement("input");
-    filenameInput.type = "hidden";
-    filenameInput.name = "filename";
-    filenameInput.value = filename;
-    form.appendChild(filenameInput);
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+    if (!proposalData || !proposalData.policy_id) return;
+    const url = `http://localhost:8000/api/generate/download/${proposalData.policy_id}`;
+    window.open(url, '_blank');
   };
 
   const filtered = policies.filter(p => {
@@ -806,8 +641,39 @@ export default function Recommend() {
               </div>
               
               {result && !loading && (
-                <div style={{ fontSize: "12px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
-                  {result.recommendations?.length || 0} recommendations
+                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                  <div style={{ fontSize: "12px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
+                    {result.recommendations?.length || 0} recommendations
+                  </div>
+                  <button
+                    onClick={handleDownloadRecsPDF}
+                    style={{
+                      background: "rgba(92, 158, 46, 0.1)",
+                      border: "1px solid var(--accent)",
+                      borderRadius: "6px",
+                      color: "var(--accent)",
+                      fontFamily: "JetBrains Mono",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      padding: "6px 12px",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all 0.15s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--accent)";
+                      e.currentTarget.style.color = "var(--bg-card)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(92, 158, 46, 0.1)";
+                      e.currentTarget.style.color = "var(--accent)";
+                    }}
+                  >
+                    <FileDown size={14} />
+                    Download PDF Report
+                  </button>
                 </div>
               )}
             </div>

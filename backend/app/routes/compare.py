@@ -5,7 +5,7 @@ from app.auth import get_current_user
 from app.database import get_connection
 import json
 
-router = APIRouter(redirect_slashes=False)
+router = APIRouter()
 
 @router.get("/v2")
 def compare_v2(
@@ -38,6 +38,26 @@ def compare_v2(
         finally:
             conn.close()
     return res
+
+@router.get("/download")
+def download_compare_pdf(
+    id1: str, 
+    id2: str
+):
+    res = compare_policies_v2(id1, id2)
+    from app.services.pdf_generator import generate_comparison_pdf
+    from fastapi.responses import Response
+    
+    pdf_bytes = generate_comparison_pdf(res)
+    
+    filename = f"PolicyIQ_Comparison_{id1[:8]}_vs_{id2[:8]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
 
 @router.get("/")
 def compare(
