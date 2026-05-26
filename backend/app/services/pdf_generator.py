@@ -5,11 +5,46 @@ from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer,
     Table, TableStyle, HRFlowable,
-    PageBreak, KeepTogether
+    PageBreak, KeepTogether, Image
 )
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
+from reportlab.pdfgen import canvas
 from io import BytesIO
 from datetime import datetime
+import os
+
+def get_logo_header(styles: dict):
+    """
+    Returns a borderless Table flowable with the brand logo and powered-by text
+    if the logo exists, or just the text styled beautifully.
+    """
+    logo_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "logo.png"))
+    powered_text = "POWERED BY PASSIONIT PRUTL KALKI AIDHARMA"
+    powered_p = Paragraph(powered_text, styles.get("PoweredByHeader", styles.get("SmallMono")))
+    
+    if os.path.exists(logo_path):
+        try:
+            # Scale logo to a clean size: 1.6cm width, 1.6cm height (or 45pt x 45pt)
+            logo_img = Image(logo_path, width=1.6*cm, height=1.6*cm)
+            
+            # Create a 2-column table: col1 for logo, col2 for text
+            logo_table = Table([[logo_img, powered_p]], colWidths=[2.0*cm, 14.0*cm])
+            logo_table.setStyle(TableStyle([
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+                ('LEFTPADDING', (1,0), (1,0), 8),
+                ('PADDING', (0,0), (-1,-1), 0),
+                ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ]))
+            return logo_table
+        except Exception as e:
+            print(f"[WARN] Error loading logo in PDF generator: {e}")
+            
+    # Fallback to text only if image is not found or fails to load
+    return Table([[powered_p]], colWidths=[16.0*cm], style=TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('PADDING', (0,0), (-1,-1), 0),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+    ]))
 
 # Color Palette Definitions
 COLOR_BLACK = colors.HexColor('#0a0a0a')
@@ -19,6 +54,131 @@ COLOR_LIGHT = colors.HexColor('#9ca3af')
 COLOR_RULE  = colors.HexColor('#e8e8e8')
 COLOR_ACCENT= colors.HexColor('#5c9e2e')
 COLOR_BG    = colors.HexColor('#fafafa')
+
+class HeaderFooterCanvas(canvas.Canvas):
+    def __init__(self, *args, doc_info=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._doc_info = doc_info or {}
+        self._saved_page_states = []
+
+    def showPage(self):
+        self._saved_page_states.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        num_pages = len(self._saved_page_states)
+        for state in self._saved_page_states:
+            self.__dict__.update(state)
+            self._draw_header_footer(num_pages)
+            canvas.Canvas.showPage(self)
+        canvas.Canvas.save(self)
+
+    def _draw_header_footer(self, total_pages):
+        page_num = self._pageNumber
+        w, h = A4
+
+        country  = self._doc_info.get("country",  "Global")
+        doc_type = self._doc_info.get("doc_type", "POLICY FRAMEWORK")
+        logo_path = os.path.abspath(
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "logo.png")
+        )
+
+        # ─────────────────────────────────────────────────────────────
+        # HEADER  (top band)
+        # ─────────────────────────────────────────────────────────────
+        HEADER_TOP    = h - 0.6*cm   # top of the header zone
+        HEADER_BOTTOM = h - 2.0*cm   # bottom of the header zone
+        header_mid_y  = (HEADER_TOP + HEADER_BOTTOM) / 2  # vertical centre
+
+        # Subtle light background strip
+        self.setFillColor(colors.HexColor('#f8faf7'))
+        self.rect(0, HEADER_BOTTOM, w, HEADER_TOP - HEADER_BOTTOM, fill=1, stroke=0)
+
+        # LEFT: logo  +  platform name
+        logo_x   = 2.5*cm
+        text_x   = logo_x
+        logo_size = 1.1*cm
+
+        if os.path.exists(logo_path):
+            try:
+                logo_y = header_mid_y - logo_size / 2
+                self.drawImage(logo_path, logo_x, logo_y,
+                               width=logo_size, height=logo_size,
+                               preserveAspectRatio=True, mask='auto')
+                text_x = logo_x + logo_size + 0.35*cm
+            except Exception:
+                pass
+
+        # Platform name (primary, bold, dark)
+        self.setFont("Helvetica-Bold", 9.0)
+        self.setFillColor(colors.HexColor('#1a2e1a'))
+        self.drawString(text_x, header_mid_y + 0.10*cm, "PolicyIQ Intelligence Platform")
+
+        # Tagline below (smaller, muted)
+        self.setFont("Helvetica", 7.0)
+        self.setFillColor(colors.HexColor('#6b7280'))
+        self.drawString(text_x, header_mid_y - 0.30*cm, "Powered by PASSIONIT PRUTL KALKI AIDHARMA")
+
+        # RIGHT: document descriptor  +  country/sector chip
+        right_x = w - 2.5*cm
+        doc_label = f"{country.upper()}  ·  {doc_type.upper()}"
+        self.setFont("Helvetica", 7.5)
+        self.setFillColor(colors.HexColor('#374151'))
+        self.drawRightString(right_x, header_mid_y + 0.10*cm, doc_label)
+
+        # Accent dot line separator under RIGHT text
+        self.setFont("Helvetica", 6.5)
+        self.setFillColor(colors.HexColor('#9ca3af'))
+        generated_label = f"Generated  {datetime.now().strftime('%d %b %Y')}"
+        self.drawRightString(right_x, header_mid_y - 0.30*cm, generated_label)
+
+        # Thick accent rule at the very bottom of the header zone
+        self.setStrokeColor(COLOR_ACCENT)
+        self.setLineWidth(2.0)
+        self.line(0, HEADER_BOTTOM, w, HEADER_BOTTOM)
+
+        # Hairline just below the accent rule for depth
+        self.setStrokeColor(colors.HexColor('#d1fae5'))
+        self.setLineWidth(0.5)
+        self.line(0, HEADER_BOTTOM - 0.5, w, HEADER_BOTTOM - 0.5)
+
+        # ─────────────────────────────────────────────────────────────
+        # FOOTER  (bottom band)
+        # ─────────────────────────────────────────────────────────────
+        FOOTER_TOP    = 2.4*cm
+        FOOTER_BOTTOM = 0.5*cm
+
+        # Solid dark footer background
+        self.setFillColor(colors.HexColor('#1a2e1a'))
+        self.rect(0, FOOTER_BOTTOM, w, FOOTER_TOP - FOOTER_BOTTOM, fill=1, stroke=0)
+
+        footer_mid_y = (FOOTER_TOP + FOOTER_BOTTOM) / 2
+
+        # LEFT: platform name in white
+        self.setFont("Helvetica-Bold", 7.5)
+        self.setFillColor(colors.white)
+        self.drawString(2.5*cm, footer_mid_y + 0.14*cm, "PolicyIQ")
+
+        self.setFont("Helvetica", 7.5)
+        self.setFillColor(colors.HexColor('#86efac'))   # soft green
+        self.drawString(2.5*cm + 1.55*cm, footer_mid_y + 0.14*cm, "Intelligence Platform")
+
+        # CENTRE: disclaimer — subdued
+        self.setFont("Helvetica-Oblique", 6.0)
+        self.setFillColor(colors.HexColor('#9ca3af'))
+        disclaimer = "AI-assisted content — human review required before formal adoption."
+        self.drawCentredString(w / 2, footer_mid_y + 0.14*cm, disclaimer)
+
+        # RIGHT: page counter
+        self.setFont("Helvetica", 7.5)
+        self.setFillColor(colors.HexColor('#86efac'))
+        self.drawRightString(w - 2.5*cm, footer_mid_y + 0.14*cm,
+                             f"Page  {page_num} / {total_pages}")
+
+        # Thin accent stripe at the very top edge of the footer band
+        self.setStrokeColor(COLOR_ACCENT)
+        self.setLineWidth(1.5)
+        self.line(0, FOOTER_TOP, w, FOOTER_TOP)
 
 def generate_policy_pdf(policy_data: dict) -> bytes:
     """
@@ -34,14 +194,14 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
     
     buffer = BytesIO()
     
-    # Doc Template Configuration
+    # Doc Template Configuration — margins clear the full-bleed header (2.0cm) and footer (2.4cm)
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
         leftMargin=2.5*cm,
         rightMargin=2.5*cm,
-        topMargin=2*cm,
-        bottomMargin=2.5*cm,
+        topMargin=2.4*cm,
+        bottomMargin=3.0*cm,
         title=title,
         author="PolicyIQ Intelligence Platform",
         subject=f"{sector} Policy Framework for {country}"
@@ -139,14 +299,30 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
             spaceAfter=4,
             leading=13,
             leftIndent=16
+        ),
+        "PoweredByHeader": ParagraphStyle(
+            "PoweredByHeader",
+            fontName="Helvetica-Bold",
+            fontSize=8.5,
+            textColor=COLOR_ACCENT,
+            leading=11,
+            alignment=TA_LEFT
+        ),
+        "DisclaimerText": ParagraphStyle(
+            "DisclaimerText",
+            fontName="Helvetica-Oblique",
+            fontSize=7.5,
+            textColor=COLOR_MID,
+            spaceBefore=6,
+            leading=10,
+            alignment=TA_JUSTIFY
         )
     }
 
     story = []
 
     # ----------------- PAGE 1: COVER PAGE -----------------
-    # Top thick accent line
-    story.append(HRFlowable(width="100%", thickness=4, color=COLOR_ACCENT, spaceAfter=24))
+    story.append(Spacer(1, 10))
     
     # Classification badge Table
     badge_data = [[Paragraph("OFFICIAL POLICY FRAMEWORK", styles["SmallMono"])]]
@@ -205,6 +381,19 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
     
     footer_text = "Generated by the PolicyIQ Intelligence Platform. This model draft serves as an analytical reference. Jurisdictions must consult legal counsel before enacting formal provisions."
     story.append(Paragraph(footer_text, styles["SmallMono"]))
+    story.append(Spacer(1, 12))
+    
+    # AI Human-in-the-loop Advisory Note
+    disclaimer_box = Table(
+        [[Paragraph("<b>Disclaimer:</b> Use of AI exists, so user human-in-loop needed for decision making.", styles["DisclaimerText"])]],
+        colWidths=[16*cm]
+    )
+    disclaimer_box.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_BG),
+        ('PADDING', (0,0), (-1,-1), 10),
+        ('BOX', (0,0), (-1,-1), 0.5, COLOR_RULE),
+    ]))
+    story.append(disclaimer_box)
     
     story.append(PageBreak())
 
@@ -354,35 +543,19 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
         ]))
         story.append(ref_table)
 
-    # Header / Footer Page Numbers Callbacks
-    def add_page_footer(canvas, doc_obj):
-        canvas.saveState()
-        
-        # We suppress running footer elements on Page 1
-        if doc_obj.page > 1:
-            canvas.setFont('Courier', 8)
-            canvas.setFillColor(COLOR_LIGHT)
-            
-            # Running Header Top
-            canvas.drawString(2.5*cm, 28.2*cm, "POLICYIQ INTEL PROFILE")
-            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 28.2*cm, f"{country.upper()} · {sector.upper()}")
-            canvas.setStrokeColor(COLOR_RULE)
-            canvas.setLineWidth(0.5)
-            canvas.line(2.5*cm, 28.0*cm, doc_obj.pagesize[0] - 2.5*cm, 28.0*cm)
-            
-            # Running Footer Bottom
-            canvas.line(2.5*cm, 2.0*cm, doc_obj.pagesize[0] - 2.5*cm, 2.0*cm)
-            canvas.drawString(2.5*cm, 1.6*cm, "PolicyIQ Intelligence Platform")
-            canvas.drawCentredString(doc_obj.pagesize[0] / 2.0, 1.6*cm, f"Page {doc_obj.page}")
-            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 1.6*cm, f"{short_title.upper()}")
-            
-        canvas.restoreState()
+    class MyCanvas(HeaderFooterCanvas):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, doc_info={
+                "country": country,
+                "sector": sector,
+                "doc_type": "POLICY FRAMEWORK Blueprint",
+                "short_title": short_title
+            }, **kwargs)
 
     # Build the document flow
     doc.build(
         story,
-        onFirstPage=add_page_footer,
-        onLaterPages=add_page_footer
+        canvasmaker=MyCanvas
     )
     
     buffer.seek(0)
@@ -419,8 +592,8 @@ def generate_comparison_pdf(comp_data: dict) -> bytes:
         pagesize=A4,
         leftMargin=2.5*cm,
         rightMargin=2.5*cm,
-        topMargin=2*cm,
-        bottomMargin=2.5*cm,
+        topMargin=2.4*cm,
+        bottomMargin=3.0*cm,
         title=f"Coherence Comparison: {p1_country} vs {p2_country}",
         author="PolicyIQ Intelligence Platform",
         subject="Regulatory Policy Coherence and Gap Alignment Audit"
@@ -432,13 +605,15 @@ def generate_comparison_pdf(comp_data: dict) -> bytes:
         "SecNum": ParagraphStyle("SN", fontName="Helvetica-Bold", fontSize=9, textColor=COLOR_ACCENT, spaceAfter=2, leading=11),
         "SecTitle": ParagraphStyle("ST", fontName="Helvetica-Bold", fontSize=13, textColor=COLOR_BLACK, spaceAfter=6, spaceBefore=12, leading=16),
         "Body": ParagraphStyle("B", fontName="Helvetica", fontSize=10, textColor=COLOR_DARK, spaceAfter=8, leading=15),
-        "Mono": ParagraphStyle("M", fontName="Courier", fontSize=8, textColor=COLOR_MID, spaceAfter=2, leading=10)
+        "Mono": ParagraphStyle("M", fontName="Courier", fontSize=8, textColor=COLOR_MID, spaceAfter=2, leading=10),
+        "PoweredByHeader": ParagraphStyle("PH", fontName="Helvetica-Bold", fontSize=8.5, textColor=COLOR_ACCENT, leading=11, alignment=TA_LEFT),
+        "DisclaimerText": ParagraphStyle("DT", fontName="Helvetica-Oblique", fontSize=7.5, textColor=COLOR_MID, spaceBefore=6, leading=10, alignment=TA_JUSTIFY)
     }
 
     story = []
 
     # COVER PAGE
-    story.append(HRFlowable(width="100%", thickness=4, color=COLOR_ACCENT, spaceAfter=20))
+    story.append(Spacer(1, 10))
     story.append(Table([[Paragraph("REGULATORY COMPARISON & COHERENCE REPORT", styles["Mono"])]], colWidths=[9*cm], style=TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), COLOR_BG),
         ('PADDING', (0,0), (-1,-1), 5),
@@ -488,6 +663,20 @@ def generate_comparison_pdf(comp_data: dict) -> bytes:
         ('BOX', (0,0), (-1,-1), 0.5, COLOR_RULE),
     ]))
     story.append(verdict_table)
+    story.append(Spacer(1, 14))
+    
+    # AI Human-in-the-loop Advisory Note
+    disclaimer_box = Table(
+        [[Paragraph("<b>Disclaimer:</b> Use of AI exists, so user human-in-loop needed for decision making.", styles["DisclaimerText"])]],
+        colWidths=[16*cm]
+    )
+    disclaimer_box.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_BG),
+        ('PADDING', (0,0), (-1,-1), 10),
+        ('BOX', (0,0), (-1,-1), 0.5, COLOR_RULE),
+    ]))
+    story.append(disclaimer_box)
+    
     story.append(PageBreak())
 
     # PAGE 2: METRICS & SHARED COVERAGE
@@ -572,23 +761,15 @@ def generate_comparison_pdf(comp_data: dict) -> bytes:
     else:
         story.append(Paragraph(recs, styles["Body"]))
 
-    def add_page_decor(canvas, doc_obj):
-        canvas.saveState()
-        if doc_obj.page > 1:
-            canvas.setFont('Courier', 8)
-            canvas.setFillColor(COLOR_LIGHT)
-            canvas.drawString(2.5*cm, 28.2*cm, "POLICYIQ COHERENCE COMPARISON")
-            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 28.2*cm, f"{p1_country.upper()} VS {p2_country.upper()}")
-            canvas.setStrokeColor(COLOR_RULE)
-            canvas.setLineWidth(0.5)
-            canvas.line(2.5*cm, 28.0*cm, doc_obj.pagesize[0] - 2.5*cm, 28.0*cm)
-            canvas.line(2.5*cm, 2.0*cm, doc_obj.pagesize[0] - 2.5*cm, 2.0*cm)
-            canvas.drawString(2.5*cm, 1.6*cm, "PolicyIQ Alignment Engine")
-            canvas.drawCentredString(doc_obj.pagesize[0] / 2.0, 1.6*cm, f"Page {doc_obj.page}")
-            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 1.6*cm, f"{sim_label.upper()} COHERENCE")
-        canvas.restoreState()
+    class MyCanvas(HeaderFooterCanvas):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, doc_info={
+                "country": f"{p1_country} vs {p2_country}",
+                "sector": p1_sector,
+                "doc_type": "COHERENCE COMPARISON"
+            }, **kwargs)
 
-    doc.build(story, onFirstPage=add_page_decor, onLaterPages=add_page_decor)
+    doc.build(story, canvasmaker=MyCanvas)
     buffer.seek(0)
     return buffer.read()
 
@@ -611,8 +792,8 @@ def generate_recommendations_pdf(rec_data: dict) -> bytes:
         pagesize=A4,
         leftMargin=2.5*cm,
         rightMargin=2.5*cm,
-        topMargin=2*cm,
-        bottomMargin=2.5*cm,
+        topMargin=2.4*cm,
+        bottomMargin=3.0*cm,
         title=f"Adoption Recommendations: {src_title}",
         author="PolicyIQ Intelligence Platform",
         subject="Policy Cross-Border Adoption Feasibility & Gap Study"
@@ -624,13 +805,15 @@ def generate_recommendations_pdf(rec_data: dict) -> bytes:
         "SecNum": ParagraphStyle("SN", fontName="Helvetica-Bold", fontSize=9, textColor=COLOR_ACCENT, spaceAfter=2, leading=11),
         "SecTitle": ParagraphStyle("ST", fontName="Helvetica-Bold", fontSize=13, textColor=COLOR_BLACK, spaceAfter=6, spaceBefore=12, leading=16),
         "Body": ParagraphStyle("B", fontName="Helvetica", fontSize=10, textColor=COLOR_DARK, spaceAfter=8, leading=15),
-        "Mono": ParagraphStyle("M", fontName="Courier", fontSize=8, textColor=COLOR_MID, spaceAfter=2, leading=10)
+        "Mono": ParagraphStyle("M", fontName="Courier", fontSize=8, textColor=COLOR_MID, spaceAfter=2, leading=10),
+        "PoweredByHeader": ParagraphStyle("PH", fontName="Helvetica-Bold", fontSize=8.5, textColor=COLOR_ACCENT, leading=11, alignment=TA_LEFT),
+        "DisclaimerText": ParagraphStyle("DT", fontName="Helvetica-Oblique", fontSize=7.5, textColor=COLOR_MID, spaceBefore=6, leading=10, alignment=TA_JUSTIFY)
     }
 
     story = []
 
     # COVER PAGE
-    story.append(HRFlowable(width="100%", thickness=4, color=COLOR_ACCENT, spaceAfter=20))
+    story.append(Spacer(1, 10))
     story.append(Table([[Paragraph("POLICY ADOPTION FEASIBILITY STUDY", styles["Mono"])]], colWidths=[7.5*cm], style=TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), COLOR_BG),
         ('PADDING', (0,0), (-1,-1), 5),
@@ -663,6 +846,20 @@ def generate_recommendations_pdf(rec_data: dict) -> bytes:
 
     # Overview text
     story.append(Paragraph("<b>Evaluation Posture:</b> This analytical feasibility study maps domestic regulatory deficits across other sovereign entities, assessing where the source guidelines address urgent legal omissions while fitting the target country's active technological and economic ecosystem.", styles["Body"]))
+    story.append(Spacer(1, 14))
+    
+    # AI Human-in-the-loop Advisory Note
+    disclaimer_box = Table(
+        [[Paragraph("<b>Disclaimer:</b> Use of AI exists, so user human-in-loop needed for decision making.", styles["DisclaimerText"])]],
+        colWidths=[16*cm]
+    )
+    disclaimer_box.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_BG),
+        ('PADDING', (0,0), (-1,-1), 10),
+        ('BOX', (0,0), (-1,-1), 0.5, COLOR_RULE),
+    ]))
+    story.append(disclaimer_box)
+    
     story.append(PageBreak())
 
     # PAGE 2: TOP RECOMMENDED JURISDICTIONS
@@ -740,22 +937,14 @@ def generate_recommendations_pdf(rec_data: dict) -> bytes:
         story.append(Paragraph("<br/>".join(bullets), styles["Body"]))
         story.append(Spacer(1, 12))
 
-    def add_page_decor(canvas, doc_obj):
-        canvas.saveState()
-        if doc_obj.page > 1:
-            canvas.setFont('Courier', 8)
-            canvas.setFillColor(COLOR_LIGHT)
-            canvas.drawString(2.5*cm, 28.2*cm, "POLICYIQ CROSS-BORDER RECS")
-            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 28.2*cm, f"SOURCE: {src_country.upper()}")
-            canvas.setStrokeColor(COLOR_RULE)
-            canvas.setLineWidth(0.5)
-            canvas.line(2.5*cm, 28.0*cm, doc_obj.pagesize[0] - 2.5*cm, 28.0*cm)
-            canvas.line(2.5*cm, 2.0*cm, doc_obj.pagesize[0] - 2.5*cm, 2.0*cm)
-            canvas.drawString(2.5*cm, 1.6*cm, "PolicyIQ Decision Intelligence")
-            canvas.drawCentredString(doc_obj.pagesize[0] / 2.0, 1.6*cm, f"Page {doc_obj.page}")
-            canvas.drawRightString(doc_obj.pagesize[0] - 2.5*cm, 1.6*cm, f"{src_sector.upper()} ADOPTION")
-        canvas.restoreState()
+    class MyCanvas(HeaderFooterCanvas):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, doc_info={
+                "country": src_country,
+                "sector": src_sector,
+                "doc_type": "ADOPTION STUDY"
+            }, **kwargs)
 
-    doc.build(story, onFirstPage=add_page_decor, onLaterPages=add_page_decor)
+    doc.build(story, canvasmaker=MyCanvas)
     buffer.seek(0)
     return buffer.read()
