@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from app.auth import (
     hash_password, verify_password,
     create_access_token, create_reset_token, verify_reset_token,
@@ -16,12 +16,14 @@ import urllib.request
 import json
 import os
 import secrets
+from app.limiter import limiter
 
 router = APIRouter()
 
 # ── Register ────────────────────────────────────────────────────────────────
 @router.post("/register", response_model=TokenResponse)
-def register(req: RegisterRequest):
+@limiter.limit("5/minute")
+def register(req: RegisterRequest, request: Request):
     email = req.email.lower()
 
     # Check if already registered
@@ -51,7 +53,8 @@ def register(req: RegisterRequest):
 
 # ── Login ───────────────────────────────────────────────────────────────────
 @router.post("/login", response_model=TokenResponse)
-def login(req: LoginRequest):
+@limiter.limit("5/minute")
+def login(req: LoginRequest, request: Request):
     user = get_user_by_email(req.email.lower())
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
@@ -81,7 +84,8 @@ def me(current_user: dict = Depends(get_current_user)):
 
 # ── Forgot Password ─────────────────────────────────────────────────────────
 @router.post("/forgot-password")
-def forgot_password(req: ForgotPasswordRequest):
+@limiter.limit("5/minute")
+def forgot_password(req: ForgotPasswordRequest, request: Request):
     email = req.email.lower()
     user = get_user_by_email(email)
 

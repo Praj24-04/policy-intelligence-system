@@ -1,12 +1,13 @@
 import os
 import time
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from app.auth import get_current_user
 from app.database import get_connection
 from app.ml.embedder import LOADED_MODEL_NAME
 from app.ml.vector_store import collection
 from app.ml.scheduler import embed_new_policies
+from app.limiter import limiter
 
 router = APIRouter()
 
@@ -56,7 +57,8 @@ def get_ml_status():
 
 
 @router.post("/trigger-embed")
-async def trigger_embed(admin_user: dict = Depends(get_admin_user)):
+@limiter.limit("2/minute")
+async def trigger_embed(request: Request, admin_user: dict = Depends(get_admin_user)):
     # Find count of unembedded policies before triggering
     conn = get_connection()
     try:

@@ -1,26 +1,26 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from datetime import datetime
 
 # ── Auth Schemas ────────────────────────────────────────────────────────────
 class RegisterRequest(BaseModel):
-    email: EmailStr
-    full_name: str
-    password: str
+    email: EmailStr = Field(..., max_length=150)
+    full_name: str = Field(..., max_length=100)
+    password: str = Field(..., max_length=100)
 
 class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+    email: EmailStr = Field(..., max_length=150)
+    password: str = Field(..., max_length=100)
 
 class GoogleLoginRequest(BaseModel):
-    credential: str
+    credential: str = Field(..., max_length=2000)
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    email: EmailStr = Field(..., max_length=150)
 
 class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str
+    token: str = Field(..., max_length=1000)
+    new_password: str = Field(..., max_length=100)
 
 class UserOut(BaseModel):
     id: int

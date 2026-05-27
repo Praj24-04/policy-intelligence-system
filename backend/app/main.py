@@ -54,12 +54,19 @@ async def lifespan(app: FastAPI):
         from app.ml.scheduler import stop_scheduler as stop_ml_scheduler
         stop_ml_scheduler(app.state.scheduler)
 
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+from app.limiter import limiter
+
 app = FastAPI(
     title="Global Policy Intelligence API",
     description="AI-powered policy analysis — Live data from OECD, CISA, EUR-Lex, ENISA",
     version="2.0.0",
     lifespan=lifespan
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -80,6 +87,35 @@ app.include_router(fetch.router,     prefix="/api/fetch",     tags=["Live Fetch"
 app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
 app.include_router(generate.router, prefix="/api/generate", tags=["Generate"])
 app.include_router(ml.router,        prefix="/api/ml",        tags=["ML System"])
+
+@app.get("/health", tags=["System Uptime"])
+def health_check():
+    health_status = {
+        "status": "healthy",
+        "database": "unreachable",
+        "ml_prewarmed": False
+    }
+    
+    # Check PostgreSQL connection
+    try:
+        from app.database import get_connection
+        conn = get_connection()
+        conn.execute("SELECT 1")
+        conn.close()
+        health_status["database"] = "connected"
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["database"] = f"error: {str(e)}"
+        
+    # Check Recommender Fit status
+    try:
+        from app.ml.recommender_v2 import recommender
+        if recommender.fitted:
+            health_status["ml_prewarmed"] = True
+    except Exception:
+        pass
+        
+    return health_status
 
 @app.get("/")
 def root():

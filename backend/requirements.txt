@@ -25,3 +25,4 @@ chromadb
 rank-bm25
 apscheduler
 pdfplumber
+slowapi
