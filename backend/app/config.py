@@ -24,7 +24,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:admin123@localho
 
 # ── CORS Origins ───────────────────────────────────────────────────────────
 # Whitelisted clients. Comma-separated list in env: "https://domain.com,http://localhost:3000"
-raw_cors = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001")
+raw_cors = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:5173")
 CORS_ORIGINS = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
 
 # ── Email Service Settings ─────────────────────────────────────────────────
