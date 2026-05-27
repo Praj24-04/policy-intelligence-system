@@ -302,7 +302,9 @@ export default function Login({ onLogin }) {
 
     const renderGoogleBtn = () => {
       if (window.google && window.google.accounts) {
-        const clientID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "779080463690-hpquule4nc3ctn6if2s8kbt4k521mhqa.apps.googleusercontent.com";
+        const clientID = (import.meta.env && import.meta.env.VITE_GOOGLE_CLIENT_ID) || 
+                         (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GOOGLE_CLIENT_ID) || 
+                         "779080463690-hpquule4nc3ctn6if2s8kbt4k521mhqa.apps.googleusercontent.com";
         
         window.google.accounts.id.initialize({
           client_id: clientID,
