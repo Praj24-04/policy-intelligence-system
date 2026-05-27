@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from typing import Optional
 from app.services.nlp_service import load_policies, get_policy_by_id
 
@@ -33,5 +33,5 @@ def get_regions():
 def get_policy(policy_id: str):
     p = get_policy_by_id(policy_id)
     if not p:
-        return {"error": "Policy not found"}
+        raise HTTPException(status_code=404, detail="Policy not found")
     return p 

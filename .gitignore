@@ -1,32 +1,65 @@
-# Python
+# Virtual Environments
+.venv/
+venv/
 backend/venv/
-backend/**/__pycache__/
+ENV/
+env/
+
+# Python Cache & Compiled Files
+__pycache__/
 **/__pycache__/
 *.pyc
 *.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Database
-backend/data/policies.db
-
-# Node — all locations
+# Node Package & Build Folders
 node_modules/
 frontend/node_modules/
 frontend/build/
 package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Environment
+# Databases & Vector Stores
+backend/data/
+backend/data/chroma_db/
+backend/data/policies.db
+*.db
+*.sqlite
+
+# Environment Configuration Files (Contains sensitive tokens and database credentials)
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 *.env
+backend/.env
+backend/.env.local
 
-# VS Code
+# Logs and Debug files
+*.log
+backend/auth_debug.log*
+backend/import_times.txt*
+
+# Output & Temporary Scratch Files
+backend/scratch/
+backend/scratch/test_output.pdf
+*.pdf
+
+# VS Code & IDE configs
 .vscode/
+.idea/
 *.code-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 
-# OS
+# OS metadata
 .DS_Store
 Thumbs.db
-
-# Databases and scratch
-backend/data/chroma_db/
-backend/scratch/

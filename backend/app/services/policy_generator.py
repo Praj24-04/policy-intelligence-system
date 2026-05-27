@@ -8,7 +8,8 @@ from app.ml.vector_store import semantic_search
 from data.country_profiles import COUNTRY_PROFILES
 
 # Initialize Anthropic API Client
-api_key = os.getenv("ANTHROPIC_API_KEY")
+from app.config import ANTHROPIC_API_KEY
+api_key = ANTHROPIC_API_KEY
 if not api_key:
     # We will raise a ValueError if the key is missing when the functions are called
     # but do not crash on import so that the app still boots.
@@ -71,15 +72,25 @@ def build_generation_context(country: str, sector: str) -> dict:
             sector_filter=sector,
             exclude_country=country
         )
-        for m in raw_matches:
-            reference_policies.append({
-                "id": m["id"],
-                "title": m["title"],
-                "country": m["country"],
-                "year": m.get("year", 2023),
-                "tags": _parse_list(m.get("tags", [])) if "tags" in m else ["security", "framework", "compliance"],
-                "relevance": m.get("relevance", "")
-            })
+        conn = get_connection()
+        try:
+            for m in raw_matches:
+                policy_id = m["id"]
+                # Query postgres to get the true source_url for this reference
+                row = conn.execute("SELECT source_url FROM policies WHERE id = %s", (policy_id,)).fetchone()
+                src_url = row["source_url"] if (row and row["source_url"]) else ""
+                
+                reference_policies.append({
+                    "id": m["id"],
+                    "title": m["title"],
+                    "country": m["country"],
+                    "year": m.get("year", 2023),
+                    "source_url": src_url,
+                    "tags": _parse_list(m.get("tags", [])) if "tags" in m else ["security", "framework", "compliance"],
+                    "relevance": m.get("relevance", "")
+                })
+        finally:
+            conn.close()
     except Exception as e:
         print(f"[ERROR] Failed to query semantic references for context: {e}")
 
@@ -276,6 +287,7 @@ def _generate_high_fidelity_mock(country: str, sector: str, scope: str, focus_ar
             "title": r_pol["title"],
             "country": r_pol["country"],
             "year": r_pol["year"],
+            "source_url": r_pol.get("source_url") or "",
             "relevance": f"Blueprints key compliance baseline and {sector.lower()} safety benchmarks used to draft Sections {idx%4 + 1} and {idx%4 + 5}."
         })
         
@@ -286,6 +298,7 @@ def _generate_high_fidelity_mock(country: str, sector: str, scope: str, focus_ar
                 "title": f"Global {sector} Cooperation Agreement",
                 "country": "OECD",
                 "year": 2024,
+                "source_url": "https://www.oecd.org/digital/",
                 "relevance": "Underpins transparent reporting models and core legislative safety clauses."
             }
         ]
@@ -349,8 +362,6 @@ def generate_policy_document(
     Constructs contextual prompts and uses Claude to generate a structured legislative document draft.
     """
     global api_key
-    if not api_key:
-        api_key = os.getenv("ANTHROPIC_API_KEY")
     
     print(f"--- DEBUG: api_key is {repr(api_key)} ---")
 
@@ -447,6 +458,7 @@ Return ONLY this JSON structure:
       "title": "policy title",
       "country": "country",
       "year": 2023,
+      "source_url": "copy exact source_url from the reference context, or leave empty if none",
       "relevance": "why cited"
     }}
   ],
@@ -471,6 +483,11 @@ Required sections (include all):
 
 Make section content substantive — minimum 150 words per section. Be specific to {country}.
 Reference actual institutions that exist in {country}.
+
+STRICT REFERENCE RULE:
+- Do NOT invent or hallucinate any reference policies, titles, years, or links.
+- Strictly choose your references from the provided list of "REFERENCE POLICIES FROM OTHER COUNTRIES".
+- For each selected reference, copy the exact "title", "country", "year", and "source_url" metadata verbatim into the "references" array. Under no circumstances should you generate a "source_url" that was not present in the reference list.
 """
 
     try:

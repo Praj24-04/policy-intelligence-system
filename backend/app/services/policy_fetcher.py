@@ -28,7 +28,7 @@ def generate_id(prefix: str, title: str, country: str) -> str:
 
 def policy_exists(policy_id: str) -> bool:
     conn = get_connection()
-    row = conn.execute("SELECT id FROM policies WHERE id = ?", (policy_id,)).fetchone()
+    row = conn.execute("SELECT id FROM policies WHERE id = %s", (policy_id,)).fetchone()
     conn.close()
     return row is not None
 
@@ -42,7 +42,7 @@ def save_policy(policy: dict) -> bool:
         conn.execute("""
             INSERT INTO policies 
             (id, title, sector, region, country, content, tags, status, year, version, source_url)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, (
             policy["id"], policy["title"], policy["sector"], policy["region"],
             policy["country"], policy["content"], json.dumps(policy.get("tags", [])),

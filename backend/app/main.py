@@ -2,22 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
 from app.routes import policies, analytics, compare, recommend, upload, auth, fetch, feedback, generate, ml
-app = FastAPI(
-    title="Global Policy Intelligence API",
-    description="AI-powered policy analysis — Live data from OECD, CISA, EUR-Lex, ENISA",
-    version="2.0.0"
-)
+from contextlib import asynccontextmanager
+from app.config import CORS_ORIGINS
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Setup globally structured logging format immediately
+from app.logging_config import setup_logging
+setup_logging()
 
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     init_db()
 
     # Pre-warm NER cache
@@ -42,19 +35,16 @@ async def startup():
     from app.ml.clusterer import load_and_fit
     threading.Thread(target=load_and_fit, daemon=True).start()
 
-
     # Run check for unembedded policies immediately
-
     try:
         await embed_new_policies()
     except Exception as e:
         print(f"[WARN] Failed running immediate policy embedding check on startup: {e}")
 
     print("[READY] PolicyIQ API running - Multi-source data pipeline active")
-
-
-@app.on_event("shutdown")
-def shutdown():
+    
+    yield
+    
     # Stop live fetch scheduler
     from app.services.scheduler import stop_scheduler as stop_fetch_scheduler
     stop_fetch_scheduler()
@@ -63,6 +53,21 @@ def shutdown():
     if hasattr(app.state, "scheduler"):
         from app.ml.scheduler import stop_scheduler as stop_ml_scheduler
         stop_ml_scheduler(app.state.scheduler)
+
+app = FastAPI(
+    title="Global Policy Intelligence API",
+    description="AI-powered policy analysis — Live data from OECD, CISA, EUR-Lex, ENISA",
+    version="2.0.0",
+    lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 app.include_router(auth.router,      prefix="/api/auth",      tags=["Auth"])

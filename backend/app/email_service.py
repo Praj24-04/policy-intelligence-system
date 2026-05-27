@@ -3,12 +3,7 @@ import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# ── SMTP Config (set these as environment variables or a .env file) ─────────
-SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER     = os.getenv("SMTP_USER", "")       # your Gmail address
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")   # Gmail App Password
-FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://localhost:3000")
+from app.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, FRONTEND_URL
 
 def send_reset_email(to_email: str, reset_token: str) -> bool:
     """

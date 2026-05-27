@@ -1,13 +1,10 @@
-const BASE = "http://localhost:8000/api";
+const BASE = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 export const getToken = () => {
-  const token = localStorage.getItem("token");
-  console.log("--- getToken() called. Returned:", token);
-  return token;
+  return localStorage.getItem("token");
 };
 
 const get = (url) => {
-  console.log(`--- API GET [${url}] initiating with token:`, getToken());
   return fetch(`${BASE}${url}`, {
     headers: {
       "Authorization": `Bearer ${getToken()}`,
@@ -15,9 +12,7 @@ const get = (url) => {
     }
   })
   .then(r => {
-    console.log(`--- API GET [${url}] response status:`, r.status);
     if (r.status === 401) {
-      console.warn(`--- API GET [${url}] returned 401. Logging out user! Token in localStorage was:`, localStorage.getItem("token"));
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.reload();
@@ -26,7 +21,6 @@ const get = (url) => {
     return r.json();
   })
   .catch(err => {
-    console.error(`API Error [${url}]:`, err);
     return null;
   });
 };
@@ -93,7 +87,7 @@ export const fetchMLStatus = () => get("/ml/status");
 export const fetchClusters = () => get(`/recommend/clusters/summary`);
 
 export const submitFeedback = (policyId, country, helpful) =>
-  fetch(`http://localhost:8000/api/feedback/`, {
+  fetch(`${BASE}/feedback/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ policy_id: policyId, country, helpful })

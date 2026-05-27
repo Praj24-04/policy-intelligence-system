@@ -16,20 +16,20 @@ def submit_feedback(feedback: FeedbackIn):
     
     # Check if feedback already exists for this policy+country
     existing = conn.execute(
-        "SELECT id FROM feedback WHERE policy_id = ? AND country = ?",
+        "SELECT id FROM feedback WHERE policy_id = %s AND country = %s",
         (feedback.policy_id, feedback.country)
     ).fetchone()
     
     if existing:
         # Update existing feedback
         conn.execute(
-            "UPDATE feedback SET helpful = ?, comment = ?, timestamp = CURRENT_TIMESTAMP WHERE policy_id = ? AND country = ?",
+            "UPDATE feedback SET helpful = %s, comment = %s, timestamp = CURRENT_TIMESTAMP WHERE policy_id = %s AND country = %s",
             (int(feedback.helpful), feedback.comment, feedback.policy_id, feedback.country)
         )
     else:
         # Insert new feedback
         conn.execute(
-            "INSERT INTO feedback (policy_id, country, helpful, comment) VALUES (?,?,?,?)",
+            "INSERT INTO feedback (policy_id, country, helpful, comment) VALUES (%s,%s,%s,%s)",
             (feedback.policy_id, feedback.country, int(feedback.helpful), feedback.comment)
         )
     
@@ -61,7 +61,7 @@ def policy_feedback(policy_id: str):
     rows = conn.execute("""
         SELECT country, helpful, comment, timestamp
         FROM feedback
-        WHERE policy_id = ?
+        WHERE policy_id = %s
         ORDER BY timestamp DESC
     """, (policy_id,)).fetchall()
     conn.close()

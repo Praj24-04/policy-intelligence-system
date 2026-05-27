@@ -142,7 +142,7 @@ def extract_countries_smart(policy: dict) -> list:
 def _get_cached_countries(policy_id: str, conn) -> list:
     try:
         row = conn.execute(
-            "SELECT extracted_countries_cache FROM policies WHERE id = ?",
+            "SELECT extracted_countries_cache FROM policies WHERE id = %s",
             (policy_id,)
         ).fetchone()
         if row and row["extracted_countries_cache"]:
@@ -155,7 +155,7 @@ def _get_cached_countries(policy_id: str, conn) -> list:
 def _save_cache(policy_id: str, countries: list, conn):
     try:
         conn.execute(
-            "UPDATE policies SET extracted_countries_cache = ? WHERE id = ?",
+            "UPDATE policies SET extracted_countries_cache = %s WHERE id = %s",
             (json.dumps(countries), policy_id)
         )
         conn.commit()
@@ -204,16 +204,16 @@ def load_policies(sector=None, region=None, search=None, status=None):
     params = []
 
     if sector:
-        query += " AND sector = ?"
+        query += " AND sector = %s"
         params.append(sector)
     if region:
-        query += " AND region = ?"
+        query += " AND region = %s"
         params.append(region)
     if status:
-        query += " AND status = ?"
+        query += " AND status = %s"
         params.append(status)
     if search:
-        query += " AND (title LIKE ? OR content LIKE ? OR country LIKE ?)"
+        query += " AND (title LIKE %s OR content LIKE %s OR country LIKE %s)"
         params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
 
     rows = conn.execute(query, params).fetchall()
@@ -240,7 +240,7 @@ def load_policies(sector=None, region=None, search=None, status=None):
 def get_policy_by_id(policy_id: str):
     conn = get_connection()
     row = conn.execute(
-        "SELECT * FROM policies WHERE id = ?", (policy_id,)
+        "SELECT * FROM policies WHERE id = %s", (policy_id,)
     ).fetchone()
 
     if not row:

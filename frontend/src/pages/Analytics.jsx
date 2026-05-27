@@ -2,13 +2,128 @@ import { useEffect, useState } from "react";
 import { fetchSectorDist, fetchRegionDist, fetchTrends, fetchCountries, fetchStatus } from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, Cell
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PieChart, Pie, Cell,
+  AreaChart, Area, CartesianGrid,
 } from "recharts";
+import {
+  TrendingUp, Globe, BarChart2, Activity,
+  ThumbsUp, MessageSquare, Star, Award
+} from "lucide-react";
 
-// Premium color system matching the forest green/grey theme
-const COLORS = ["#5c9e2e", "#7ca85a", "#9cb288", "#2563eb", "#5b84d4", "#8c9fb2"];
+// ── Design Tokens matching Dashboard ─────────────────────────────────────────
+const ACCENT       = "#5c9e2e";
+const ACCENT_LIGHT = "#a3e635";
 
+const SECTOR_COLORS = {
+  "Data Privacy":         "#5c9e2e",
+  "Cybersecurity":        "#2563eb",
+  "AI Governance":        "#d97706",
+  "Financial Regulation": "#6b7280",
+  "Healthcare AI":        "#7c3aed",
+  "IoT and Robotics":     "#0891b2",
+  "ESG Policies":         "#a3e635",
+  "POSH Policies":        "#374151",
+};
+
+const CHART_COLORS = [
+  "#5c9e2e","#a3e635","#2563eb","#7c3aed",
+  "#d97706","#0891b2","#6b7280","#374151","#ef4444","#f472b6"
+];
+
+const TTStyle = {
+  background: "var(--bg-card)",
+  border: "1px solid var(--border)",
+  borderRadius: "6px",
+  fontSize: "12px",
+  fontFamily: "DM Sans",
+  color: "var(--text-main)",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+};
+
+// ── Reusable Card matching Dashboard card style ───────────────────────────────
+const ChartCard = ({ title, sub, badge, children, delay = 1, span1 }) => (
+  <div
+    className={`fade-up fade-up-${delay}`}
+    style={{
+      background: "var(--bg-card)",
+      border: "1px solid var(--border)",
+      borderRadius: "8px",
+      padding: "22px 28px",
+      gridColumn: span1 ? "span 1" : undefined,
+    }}
+  >
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+      <div>
+        <div style={{
+          display: "inline-block",
+          background: "rgba(92,158,46,0.08)",
+          border: "1px solid rgba(92,158,46,0.15)",
+          borderRadius: "4px",
+          padding: "4px 10px",
+          marginBottom: "6px",
+        }}>
+          <span style={{ fontFamily: "DM Sans", fontWeight: 600, fontSize: "13px", color: ACCENT }}>
+            {title}
+          </span>
+        </div>
+        <div style={{ fontSize: "12px", fontFamily: "DM Sans", color: "var(--text-muted)" }}>{sub}</div>
+      </div>
+      {badge && (
+        <span style={{
+          background: "var(--bg-hover)",
+          border: "1px solid var(--border)",
+          borderRadius: "4px",
+          padding: "3px 8px",
+          fontSize: "10px",
+          color: "var(--text-muted)",
+          fontFamily: "JetBrains Mono",
+          flexShrink: 0,
+        }}>
+          {badge}
+        </span>
+      )}
+    </div>
+    {children}
+  </div>
+);
+
+// ── Stat mini-card (same style as Dashboard stat cards) ──────────────────────
+const StatCard = ({ label, value, sub, Icon, delay }) => (
+  <div
+    className={`fade-up fade-up-${delay}`}
+    style={{
+      background: "var(--bg-card)",
+      border: "1px solid var(--border)",
+      borderRadius: "8px",
+      padding: "18px 22px",
+      display: "flex",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+    }}
+  >
+    <div>
+      <span style={{
+        fontSize: "11px", fontFamily: "JetBrains Mono",
+        color: "var(--text-muted)", letterSpacing: "0.08em",
+        textTransform: "uppercase", marginBottom: "10px", display: "block",
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: "36px", fontFamily: "DM Sans", fontWeight: 700,
+        color: "var(--text-main)", lineHeight: 1,
+        marginBottom: "6px", display: "block",
+      }}>
+        {value ?? "—"}
+      </span>
+      <div style={{ fontSize: "12px", fontFamily: "DM Sans", color: "var(--text-muted)" }}>{sub}</div>
+    </div>
+    {Icon && <Icon size={16} color={ACCENT} style={{ marginTop: 2, flexShrink: 0 }} />}
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 export default function Analytics() {
   const [sectors,       setSectors]       = useState([]);
   const [regions,       setRegions]       = useState([]);
@@ -24,12 +139,19 @@ export default function Analytics() {
         setSectors(Object.entries(sec || {}).map(([name, value]) => ({ name, value })));
         setRegions(Object.entries(reg || {}).map(([name, value]) => ({ name, value })));
         setTrends(Object.entries(tr || {}).map(([year, count]) => ({ year: String(year), count })));
-        setCountries(Object.entries(ctr || {}).sort((a,b) => b[1]-a[1]).slice(0,10).map(([name, value]) => ({ name, value })));
+        setCountries(
+          Object.entries(ctr || {})
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([name, value]) => ({
+              name: name.replace("European Union","EU").replace("United States","USA").replace("United Kingdom","UK"),
+              value,
+            }))
+        );
         setStatus(Object.entries(st || {}).map(([name, value]) => ({ name, value })));
         setLoading(false);
       });
 
-    // Fetch feedback summary
     fetch("http://localhost:8000/api/feedback/summary")
       .then(r => r.json())
       .then(setFeedbackStats)
@@ -38,170 +160,238 @@ export default function Analytics() {
 
   if (loading) return <LoadingSpinner label="Generating analytics..." />;
 
-  // Styled unified Card Component matching Compare visual system with scaled up fonts
-  const ChartCard = ({ title, sub, children, delay = 1 }) => (
-    <div 
-      className={`card fade-up fade-up-${delay}`} 
-      style={{ 
-        padding: "22px 28px",
-        background: "var(--bg-card)",
-        border: "1px solid var(--border)",
-        borderRadius: "8px",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-        marginBottom: "0px" // Managed by grid/row layout
-      }}
-    >
-      <h3 style={{ 
-        fontFamily: "DM Sans", 
-        fontWeight: 600, 
-        fontSize: "15px", // Scaled up from 14px
-        color: "var(--text-main)", 
-        margin: "0 0 4px 0" 
-      }}>
-        {title}
-      </h3>
-      <p style={{ 
-        fontFamily: "DM Sans", 
-        fontSize: "13px", // Scaled up from 12px
-        color: "var(--text-muted)", 
-        margin: "0 0 20px 0" 
-      }}>
-        {sub}
-      </p>
-      {children}
-    </div>
-  );
-
-  // Minimalist, high-legibility tooltip style
-  const TTStyle = { 
-    background: "var(--bg-card)", 
-    border: "1px solid var(--border)", 
-    borderRadius: "6px", 
-    fontSize: "12px", 
-    fontFamily: "DM Sans",
-    color: "var(--text-main)",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
-  };
+  const totalPolicies = status.reduce((s, i) => s + i.value, 0);
+  const recentTrend   = trends.slice(-3).reduce((s, t) => s + t.count, 0);
+  const topSector     = sectors.sort((a, b) => b.value - a.value)[0];
+  const topCountry    = countries[0];
 
   return (
-    <div style={{
-      flex: 1,
-      overflowY: "auto",
-      background: "var(--bg-deep)",
-      minHeight: "100vh"
-    }}>
-      <div style={{
-        maxWidth: "1280px",
-        margin: "0 auto",
-        padding: "32px 40px",
-        width: "100%"
-      }}>
-        
-        {/* Page Header (Exactly aligned with Compare and Database titles) */}
+    <div style={{ flex: 1, overflowY: "auto", background: "var(--bg-deep)", minHeight: "100vh" }}>
+      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px 40px", width: "100%" }}>
+
+        {/* ── PAGE HEADER ───────────────────────────────────────────────── */}
         <div className="fade-up" style={{ marginBottom: "28px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
-            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--cyan)", backgroundColor: "var(--cyan)" }}></span>
-            <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)", letterSpacing: "0.05em" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: ACCENT }} />
+            <span style={{ fontSize: "11px", fontFamily: "JetBrains Mono", color: "var(--text-muted)", letterSpacing: "0.1em" }}>
               PREP / INSIGHTS
             </span>
           </div>
-          <h1 style={{ 
-            fontFamily: "'DM Sans', sans-serif", 
-            fontSize: "52px", 
-            fontWeight: 700, 
+          <h1 style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: "52px", fontWeight: 700,
             color: "var(--text-main)",
-            margin: "0 0 16px 0",
-            letterSpacing: "-1.5px",
-            lineHeight: "1.1"
+            margin: "0 0 12px 0",
+            letterSpacing: "-1.5px", lineHeight: "1.1",
           }}>
             Discover global <span className="half-highlight-custom">trends.</span>
           </h1>
           <p style={{ fontFamily: "DM Sans", fontSize: "14px", color: "var(--text-muted)", margin: 0 }}>
-            Aggregated view of global policy intelligence data
+            Aggregated intelligence across {totalPolicies} policies · {sectors.length} sectors · {countries.length} top jurisdictions
           </p>
         </div>
 
-        {/* Grid Spacing Variable: 20px, Card Spacings: 28px */}
+        {/* ── SUMMARY STAT CARDS (same 4-card row as Dashboard) ─────────── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px", marginBottom: "24px" }}>
+          <StatCard label="Total Policies"    value={totalPolicies}       sub="Across all statuses"      Icon={BarChart2}  delay={1} />
+          <StatCard label="Recent (3yr)"      value={recentTrend}         sub="New policies 2022–2024"   Icon={TrendingUp} delay={2} />
+          <StatCard label="Top Sector"        value={topSector?.value}    sub={topSector?.name}          Icon={Activity}   delay={3} />
+          <StatCard label="Top Jurisdiction"  value={topCountry?.value}   sub={topCountry?.name}         Icon={Globe}      delay={4} />
+        </div>
 
-        {/* Charts Row 1 */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "28px" }}>
-          
-          {/* Country bar */}
-          <ChartCard title="Top Countries by Policy Mentions" sub="Extracted via spaCy NER from policy content" delay={1}>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={countries} layout="vertical" barSize={10}>
-                <XAxis type="number" tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "JetBrains Mono" }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "DM Sans" }} axisLine={false} tickLine={false} width={110} />
-                <Tooltip contentStyle={TTStyle} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                  {countries.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        {/* ── ROW 1: Top Countries + Sector Donut ───────────────────────── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "20px", marginBottom: "20px" }}>
+
+          {/* Top Countries — horizontal bars with rank numbers */}
+          <ChartCard
+            title="Top Jurisdictions by Policy Mentions"
+            sub="Extracted via spaCy NER from policy content"
+            badge="NER Extraction"
+            delay={1}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "9px" }}>
+              {countries.slice(0, 8).map((c, i) => {
+                const max = countries[0]?.value || 1;
+                const pct = (c.value / max) * 100;
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{
+                      width: "18px", flexShrink: 0,
+                      fontSize: "10px", fontFamily: "JetBrains Mono",
+                      color: "var(--text-dim)", textAlign: "right",
+                    }}>
+                      #{i + 1}
+                    </span>
+                    <div style={{
+                      width: "82px", flexShrink: 0,
+                      fontSize: "13px", fontFamily: "DM Sans",
+                      fontWeight: 500, color: "var(--text-main)",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {c.name}
+                    </div>
+                    <div style={{
+                      flex: 1, height: "5px",
+                      background: "var(--bg-hover)",
+                      borderRadius: "3px", overflow: "hidden",
+                    }}>
+                      <div style={{
+                        width: `${pct}%`, height: "100%",
+                        background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT_LIGHT})`,
+                        borderRadius: "3px",
+                        transition: "width 0.7s ease",
+                      }} />
+                    </div>
+                    <span style={{
+                      width: "32px", textAlign: "right", flexShrink: 0,
+                      fontSize: "12px", fontFamily: "JetBrains Mono",
+                      color: "var(--text-muted)", fontWeight: 600,
+                    }}>
+                      {c.value}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </ChartCard>
 
-          {/* Region radar */}
-          <ChartCard title="Regional Policy Distribution" sub="Geographic spread across global regions" delay={2}>
-            <ResponsiveContainer width="100%" height={220}>
-              <RadarChart data={regions}>
-                {/* Soft, clean grid lines in grey for light theme integration */}
+          {/* Sector donut + legend */}
+          <ChartCard
+            title="Sector Distribution"
+            sub="Policy breakdown by domain"
+            badge={`${sectors.length} sectors`}
+            delay={2}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "0px" }}>
+              <ResponsiveContainer width="100%" height={150}>
+                <PieChart>
+                  <Pie
+                    data={sectors} dataKey="value" nameKey="name"
+                    innerRadius={42} outerRadius={68} paddingAngle={2}
+                  >
+                    {sectors.map((s, i) => (
+                      <Cell key={i} fill={SECTOR_COLORS[s.name] || CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={0} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={TTStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", marginTop: "4px" }}>
+                {sectors.map((s, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div style={{
+                      width: "7px", height: "7px", borderRadius: "50%", flexShrink: 0,
+                      background: SECTOR_COLORS[s.name] || CHART_COLORS[i % CHART_COLORS.length],
+                    }} />
+                    <span style={{ fontSize: "11px", fontFamily: "DM Sans", color: "var(--text-muted)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {s.name}
+                    </span>
+                    <span style={{ fontSize: "11px", fontFamily: "JetBrains Mono", color: "var(--text-main)", fontWeight: 600 }}>
+                      {s.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ChartCard>
+        </div>
+
+        {/* ── ROW 2: Adoption Timeline (full width) ─────────────────────── */}
+        <div style={{ marginBottom: "20px" }}>
+          <ChartCard
+            title="Global Policy Adoption Timeline"
+            sub="Year-wise policy enactment trend — shows accelerating regulatory activity post-2018"
+            badge="Adoption trend"
+            delay={3}
+          >
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={trends}>
+                <defs>
+                  <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor={ACCENT} stopOpacity={0.10} />
+                    <stop offset="95%" stopColor={ACCENT} stopOpacity={0}    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" strokeWidth={0.5} />
+                <XAxis dataKey="year" tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "JetBrains Mono" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "JetBrains Mono" }} axisLine={false} tickLine={false} width={24} />
+                <Tooltip contentStyle={TTStyle} />
+                <Area
+                  type="monotone" dataKey="count"
+                  stroke={ACCENT} strokeWidth={2}
+                  fillOpacity={1} fill="url(#trendGrad)"
+                  dot={{ fill: ACCENT, r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: ACCENT_LIGHT }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </div>
+
+        {/* ── ROW 3: Regional Radar + Policy Status ─────────────────────── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+
+          {/* Regional Radar — cleaner */}
+          <ChartCard
+            title="Regional Policy Distribution"
+            sub="Geographic spread across global regions"
+            badge="Radar view"
+            delay={4}
+          >
+            <ResponsiveContainer width="100%" height={240}>
+              <RadarChart data={regions} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
                 <PolarGrid stroke="var(--border)" />
-                <PolarAngleAxis dataKey="name" tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "DM Sans" }} />
-                <Radar dataKey="value" stroke="#5c9e2e" fill="#5c9e2e" fillOpacity={0.12} strokeWidth={2} />
+                <PolarAngleAxis
+                  dataKey="name"
+                  tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "DM Sans" }}
+                />
+                <Radar
+                  dataKey="value"
+                  stroke={ACCENT} fill={ACCENT} fillOpacity={0.12}
+                  strokeWidth={2}
+                />
                 <Tooltip contentStyle={TTStyle} />
               </RadarChart>
             </ResponsiveContainer>
           </ChartCard>
-        </div>
 
-        {/* Charts Row 2 */}
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", marginBottom: "28px" }}>
-          
-          {/* Year trend */}
-          <ChartCard title="Global Policy Adoption Timeline" sub="Year-wise policy enactment trend" delay={3}>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={trends} barSize={24}>
-                <XAxis dataKey="year" tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "JetBrains Mono" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "var(--text-muted)", fontSize: 11, fontFamily: "JetBrains Mono" }} axisLine={false} tickLine={false} width={25} />
-                <Tooltip contentStyle={TTStyle} />
-                <Bar dataKey="count" radius={[4,4,0,0]}>
-                  {trends.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {/* Status */}
-          <ChartCard title="Policy Status" sub="Active vs Under Review" delay={4}>
+          {/* Policy Status — cleaner cards */}
+          <ChartCard
+            title="Policy Status Breakdown"
+            sub="Active vs Under Review vs other states"
+            delay={5}
+          >
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {status.map((s, i) => {
-                const isActive = s.name === "Active";
+                const isActive   = s.name === "Active";
+                const isReview   = s.name === "Under Review";
+                const color      = isActive ? ACCENT : isReview ? "#d97706" : "#6b7280";
+                const bgColor    = isActive ? "rgba(92,158,46,0.06)" : isReview ? "rgba(217,119,6,0.06)" : "var(--bg-hover)";
+                const borderClr  = isActive ? "rgba(92,158,46,0.2)" : isReview ? "rgba(217,119,6,0.18)" : "var(--border)";
+                const total      = status.reduce((a, x) => a + x.value, 0);
+                const pct        = total ? Math.round((s.value / total) * 100) : 0;
                 return (
                   <div key={i} style={{
-                    display: "flex", 
-                    justifyContent: "space-between", 
-                    alignItems: "center",
-                    padding: "14px 20px", 
+                    padding: "14px 18px",
                     borderRadius: "8px",
-                    background: isActive ? "#f0f7e8" : "rgba(245,158,11,0.05)",
-                    border: `1px solid ${isActive ? "rgba(92,158,46,0.2)" : "rgba(245,158,11,0.15)"}`,
+                    background: bgColor,
+                    border: `1px solid ${borderClr}`,
                   }}>
-                    <span style={{ 
-                      fontSize: "14px", // Scaled up from 13px
-                      fontFamily: "DM Sans",
-                      fontWeight: 600,
-                      color: isActive ? "#3d6b1e" : "#d97706" 
-                    }}>
-                      {s.name}
-                    </span>
-                    <span style={{
-                      fontFamily: "DM Sans", 
-                      fontWeight: 700, 
-                      fontSize: "28px",
-                      color: isActive ? "#5c9e2e" : "#d97706"
-                    }}>
-                      {s.value}
-                    </span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "13px", fontFamily: "DM Sans", fontWeight: 600, color }}>
+                        {s.name}
+                      </span>
+                      <span style={{ fontSize: "24px", fontFamily: "DM Sans", fontWeight: 700, color }}>
+                        {s.value}
+                      </span>
+                    </div>
+                    {/* Mini progress bar */}
+                    <div style={{ height: "3px", background: "var(--bg-hover)", borderRadius: "2px", overflow: "hidden" }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: "2px" }} />
+                    </div>
+                    <div style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-dim)", marginTop: "5px" }}>
+                      {pct}% of total
+                    </div>
                   </div>
                 );
               })}
@@ -209,134 +399,127 @@ export default function Analytics() {
           </ChartCard>
         </div>
 
-        {/* Feedback Stats */}
+        {/* ── ROW 4: Feedback Intelligence (conditional) ────────────────── */}
         {feedbackStats && (
-          <div 
-            className="card fade-up" 
-            style={{ 
-              padding: "22px 28px", 
-              background: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-              marginTop: "0" 
-            }}
-          >
-            <h3 style={{
-              fontFamily: "DM Sans", 
-              fontWeight: 600,
-              fontSize: "15px", // Scaled up from 14px
-              color: "var(--text-main)", 
-              margin: "0 0 4px 0"
-            }}>
-              Recommendation Feedback
-            </h3>
-            <p style={{ 
-              fontFamily: "DM Sans",
-              fontSize: "13px", // Scaled up from 12px
-              color: "var(--text-muted)", 
-              margin: "0 0 20px 0" 
-            }}>
-              User validation of ML recommendations
-            </p>
+          <div className="fade-up" style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            padding: "22px 28px",
+            marginBottom: "20px",
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+              <div>
+                <div style={{
+                  display: "inline-block",
+                  background: "rgba(92,158,46,0.08)",
+                  border: "1px solid rgba(92,158,46,0.15)",
+                  borderRadius: "4px", padding: "4px 10px", marginBottom: "6px",
+                }}>
+                  <span style={{ fontFamily: "DM Sans", fontWeight: 600, fontSize: "13px", color: ACCENT }}>
+                    Recommendation Feedback Intelligence
+                  </span>
+                </div>
+                <div style={{ fontSize: "12px", fontFamily: "DM Sans", color: "var(--text-muted)" }}>
+                  User validation of ML recommendations
+                </div>
+              </div>
+            </div>
 
-            {/* Feedback Summary Cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "20px" }}>
+            {/* Feedback Stat Row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "14px", marginBottom: "20px" }}>
               {[
-                { label: "Total Feedback", value: feedbackStats.total_feedback, color: "#2563eb" },
-                { label: "Marked Helpful", value: feedbackStats.positive, color: "#5c9e2e" },
-                { label: "Accuracy Rate", value: `${feedbackStats.accuracy_rate}%`, color: "#d97706" },
+                { label: "Total Feedback", value: feedbackStats.total_feedback, color: "#2563eb",  Icon: MessageSquare },
+                { label: "Marked Helpful", value: feedbackStats.positive,        color: ACCENT,     Icon: ThumbsUp      },
+                { label: "Accuracy Rate",  value: `${feedbackStats.accuracy_rate}%`, color: "#d97706", Icon: Star      },
               ].map((s, i) => (
                 <div key={i} style={{
                   background: "var(--bg-hover)",
-                  backgroundColor: "var(--bg-hover)",
                   border: "1px solid var(--border)",
-                  borderRadius: "8px", 
-                  padding: "16px", 
-                  textAlign: "center"
+                  borderRadius: "8px",
+                  padding: "16px 18px",
+                  display: "flex", alignItems: "center", gap: "14px",
                 }}>
                   <div style={{
-                    fontSize: "11px", 
-                    color: "var(--text-muted)",
-                    fontWeight: 600,
-                    letterSpacing: "0.06em",
-                    fontFamily: "JetBrains Mono", 
-                    marginBottom: "6px",
-                    textTransform: "uppercase"
+                    width: "36px", height: "36px", borderRadius: "8px",
+                    background: `${s.color}14`, border: `1px solid ${s.color}30`,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                   }}>
-                    {s.label}
+                    <s.Icon size={16} color={s.color} />
                   </div>
-                  <div style={{
-                    fontFamily: "DM Sans", 
-                    fontWeight: 700,
-                    fontSize: "24px", 
-                    color: s.color
-                  }}>
-                    {s.value}
+                  <div>
+                    <div style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-muted)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "4px" }}>
+                      {s.label}
+                    </div>
+                    <div style={{ fontSize: "22px", fontFamily: "DM Sans", fontWeight: 700, color: s.color }}>
+                      {s.value}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Empty State */}
+            {/* Empty state */}
             {feedbackStats.total_feedback === 0 && (
               <div style={{
-                textAlign: "center", 
-                padding: "20px",
-                color: "var(--text-dim)", 
-                fontSize: "13px",
-                fontFamily: "JetBrains Mono"
+                textAlign: "center", padding: "24px",
+                color: "var(--text-dim)", fontSize: "13px",
+                fontFamily: "JetBrains Mono",
+                background: "var(--bg-hover)", borderRadius: "8px",
+                border: "1px solid var(--border)",
               }}>
-                No feedback yet — use the Recommender and rate recommendations
+                No feedback yet — use the Recommender and rate suggestions
               </div>
             )}
 
-            {/* Top Validated Recommendations */}
+            {/* Top validated recommendations */}
             {feedbackStats.top_helpful?.length > 0 && (
               <div>
                 <div style={{
-                  fontSize: "11px", 
-                  color: "var(--text-muted)",
-                  fontFamily: "JetBrains Mono", 
-                  letterSpacing: "0.05em",
-                  marginBottom: "10px",
-                  fontWeight: 600
+                  fontSize: "10px", fontFamily: "JetBrains Mono",
+                  color: "var(--text-muted)", letterSpacing: "0.08em",
+                  fontWeight: 600, marginBottom: "10px", textTransform: "uppercase",
+                  display: "flex", alignItems: "center", gap: "6px",
                 }}>
-                  TOP VALIDATED RECOMMENDATIONS
+                  <Award size={11} color={ACCENT} />
+                  Top Validated Recommendations
                 </div>
-                {feedbackStats.top_helpful.map((f, i) => (
-                  <div key={i} style={{
-                    display: "flex", 
-                    justifyContent: "space-between",
-                    alignItems: "center", 
-                    padding: "10px 14px",
-                    borderRadius: "8px", 
-                    marginBottom: "8px",
-                    background: "rgba(92,158,46,0.04)",
-                    border: "1px solid rgba(92,158,46,0.1)"
-                  }}>
-                    <div>
-                      <span style={{ fontSize: "14px", fontFamily: "DM Sans", color: "var(--text-main)", fontWeight: 600 }}>
-                        {f.country}
-                      </span>
-                      <span style={{
-                        fontSize: "11px", 
-                        color: "var(--text-muted)",
-                        fontFamily: "JetBrains Mono", 
-                        marginLeft: "8px"
-                      }}>
-                        {f.policy_id}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {feedbackStats.top_helpful.map((f, i) => (
+                    <div key={i} style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "10px 14px", borderRadius: "8px",
+                      background: "rgba(92,158,46,0.04)",
+                      border: "1px solid rgba(92,158,46,0.10)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{
+                          width: "20px", height: "20px", borderRadius: "6px",
+                          background: "rgba(92,158,46,0.12)", border: "1px solid rgba(92,158,46,0.2)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: "9px", fontFamily: "JetBrains Mono", fontWeight: 700, color: ACCENT,
+                        }}>
+                          #{i + 1}
+                        </span>
+                        <span style={{ fontSize: "13px", fontFamily: "DM Sans", color: "var(--text-main)", fontWeight: 600 }}>
+                          {f.country}
+                        </span>
+                        <span style={{ fontSize: "10px", color: "var(--text-muted)", fontFamily: "JetBrains Mono" }}>
+                          {f.policy_id}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: "12px", fontFamily: "DM Sans", color: ACCENT, fontWeight: 600 }}>
+                        👍 {f.votes} vote{f.votes > 1 ? "s" : ""}
                       </span>
                     </div>
-                    <span style={{ fontSize: "13px", fontFamily: "DM Sans", color: "#5c9e2e", fontWeight: 600 }}>
-                      👍 {f.votes} vote{f.votes > 1 ? "s" : ""}
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
         )}
+
       </div>
     </div>
   );

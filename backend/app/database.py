@@ -1,20 +1,30 @@
 import psycopg2
 import psycopg2.extras
+from psycopg2.pool import ThreadedConnectionPool
 import json
 import hashlib
 from pathlib import Path
+from app.config import DATABASE_URL
 
-DB_URL = "postgresql://postgres:admin123@localhost:5432/policy_db"
+# Centralized connection pool for database connections
+_pool = None
+
+def get_pool():
+    global _pool
+    if _pool is None:
+        try:
+            # Min 2 connections, Max 20 connections for concurrency
+            _pool = ThreadedConnectionPool(2, 20, dsn=DATABASE_URL)
+        except Exception as e:
+            print(f"[CRITICAL] Database connection pool failed to initialize: {e}")
+            raise e
+    return _pool
 
 class PostgresConnectionWrapper:
     def __init__(self, conn):
         self.conn = conn
 
     def execute(self, query, params=None):
-        # sqlite uses ? for parameters, psycopg2 uses %s
-        if params is not None and "?" in query:
-             query = query.replace("?", "%s")
-             
         cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cur.execute(query, params)
         return cur
@@ -23,10 +33,17 @@ class PostgresConnectionWrapper:
         self.conn.commit()
 
     def close(self):
-        self.conn.close()
+        # Return connection to the central pool instead of closing it
+        try:
+            pool = get_pool()
+            pool.putconn(self.conn)
+        except Exception:
+            # Fallback if pool is already cleaned up during shutdown
+            self.conn.close()
 
 def get_connection():
-    conn = psycopg2.connect(DB_URL)
+    pool = get_pool()
+    conn = pool.getconn()
     return PostgresConnectionWrapper(conn)
 
 def init_db():

@@ -5,7 +5,7 @@ from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer,
     Table, TableStyle, HRFlowable,
-    PageBreak, KeepTogether, Image
+    PageBreak, KeepTogether, Image, Flowable
 )
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
 from reportlab.pdfgen import canvas
@@ -54,6 +54,23 @@ COLOR_LIGHT = colors.HexColor('#9ca3af')
 COLOR_RULE  = colors.HexColor('#e8e8e8')
 COLOR_ACCENT= colors.HexColor('#5c9e2e')
 COLOR_BG    = colors.HexColor('#fafafa')
+
+# Shared dictionary to store page numbers dynamically during compilation
+_page_registry = {}
+
+class PageTracker(Flowable):
+    def __init__(self, key):
+        super().__init__()
+        self.key = key
+
+    def draw(self):
+        # Record the page number of this specific location in the document flow
+        _page_registry[self.key] = self.canv.getPageNumber()
+
+    def wrap(self, availWidth, availHeight):
+        # Return tiny size (1pt x 1pt) so the layout engine evaluates and executes draw()
+        return 1.0, 1.0
+
 
 class HeaderFooterCanvas(canvas.Canvas):
     def __init__(self, *args, doc_info=None, **kwargs):
@@ -182,8 +199,20 @@ class HeaderFooterCanvas(canvas.Canvas):
 
 def generate_policy_pdf(policy_data: dict) -> bytes:
     """
-    Generates a professional government-style A4 PDF of the generated policy framework.
-    Returns binary bytes for direct attachment/inline downloads.
+    Generates a professional government-style A4 PDF of the generated policy framework
+    using a standard double-pass layout compiler to resolve dynamic page numbers.
+    """
+    _page_registry.clear()  # Clear registry in-place so imported references remain valid
+    
+    # Pass 1: Build document to discover exact layout page boundaries
+    _build_policy_pdf_flow(policy_data)
+    
+    # Pass 2: Re-build document using recorded section page numbers in TOC
+    return _build_policy_pdf_flow(policy_data)
+
+def _build_policy_pdf_flow(policy_data: dict) -> bytes:
+    """
+    Core layout builder for generating a government-style policy blueprint PDF.
     """
     country = policy_data.get("country", "Global")
     sector = policy_data.get("sector", "Cybersecurity")
@@ -406,9 +435,28 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
     toc_data = []
     sections = document.get("sections", [])
     for sec in sections:
-        toc_title = Paragraph(f"Section {sec.get('number')} — {sec.get('title')}", styles["BodyText"])
-        toc_page = Paragraph("—", styles["SmallMono"])
+        sec_num = sec.get("number")
+        toc_title = Paragraph(f"Section {sec_num} — {sec.get('title')}", styles["BodyText"])
+        # Query the page registry for the resolved page number from Pass 1
+        p_num = _page_registry.get(f"sec_{sec_num}", "—")
+        toc_page = Paragraph(str(p_num), styles["SmallMono"])
         toc_data.append([toc_title, toc_page])
+        
+    timeline = document.get("implementation_timeline", [])
+    if timeline:
+        road_page = _page_registry.get("timeline", "—")
+        toc_data.append([
+            Paragraph("Roadmap & Implementation Timeline", styles["BodyText"]),
+            Paragraph(str(road_page), styles["SmallMono"])
+        ])
+        
+    refs = document.get("references", [])
+    if refs:
+        refs_page = _page_registry.get("references", "—")
+        toc_data.append([
+            Paragraph("Regulatory References & Basis", styles["BodyText"]),
+            Paragraph(str(refs_page), styles["SmallMono"])
+        ])
         
     toc_table = Table(toc_data, colWidths=[14.5*cm, 1.5*cm])
     toc_table.setStyle(TableStyle([
@@ -470,6 +518,9 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
     story.append(Spacer(1, 16))
     
     for sec in sections:
+        # Register the page tracker Flowable so it logs the section's exact resolved page
+        story.append(PageTracker(f"sec_{sec.get('number')}"))
+        
         # Keep section headers together
         sec_header = KeepTogether([
             Paragraph(f"SECTION {sec.get('number')}", styles["SectionNumber"]),
@@ -490,6 +541,7 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
     timeline = document.get("implementation_timeline", [])
     if timeline:
         story.append(PageBreak())
+        story.append(PageTracker("timeline"))
         story.append(Paragraph("ROADMAP & IMPLEMENTATION TIMELINE", styles["SectionNumber"]))
         story.append(Spacer(1, 2))
         story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_RULE, spaceAfter=12))
@@ -523,6 +575,7 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
     refs = document.get("references", [])
     if refs:
         story.append(PageBreak())
+        story.append(PageTracker("references"))
         story.append(Paragraph("REGULATORY REFERENCES & BASIS", styles["SectionNumber"]))
         story.append(Spacer(1, 2))
         story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_RULE, spaceAfter=12))
@@ -530,7 +583,14 @@ def generate_policy_pdf(policy_data: dict) -> bytes:
         ref_rows = []
         for idx, ref in enumerate(refs, 1):
             ref_badge = Paragraph(f"[{ref.get('id', idx)}]", styles["SectionNumber"])
-            ref_details = Paragraph(f"<b>{ref.get('title')}</b> — {ref.get('country')} ({ref.get('year')})", styles["BodyText"])
+            
+            # Clickable dynamic reference link
+            source_link = ref.get("source_url")
+            link_html = ""
+            if source_link:
+                link_html = f"<br/><font size='8' color='#5c9e2e'>Source Link: <u><a href='{source_link}'>{source_link}</a></u></font>"
+                
+            ref_details = Paragraph(f"<b>{ref.get('title')}</b> — {ref.get('country')} ({ref.get('year')}){link_html}", styles["BodyText"])
             ref_relevance = Paragraph(f"<i>Citation Relevance:</i> {ref.get('relevance')}", styles["Reference"])
             ref_rows.append([ref_badge, ref_details, ref_relevance])
             
@@ -625,11 +685,17 @@ def generate_comparison_pdf(comp_data: dict) -> bytes:
     story.append(Paragraph(f"An automated cross-jurisdiction semantic coherence and regulatory gap audit comparing policies in the {p1_sector} domain.", styles["Subtitle"]))
     story.append(Spacer(1, 16))
 
+    p1_url = p1.get("source_url") or ""
+    p2_url = p2.get("source_url") or ""
+    
+    p1_link_html = f"<br/><font size='8' color='#5c9e2e'>Source Link: <u><a href='{p1_url}'>{p1_url}</a></u></font>" if p1_url else ""
+    p2_link_html = f"<br/><font size='8' color='#5c9e2e'>Source Link: <u><a href='{p2_url}'>{p2_url}</a></u></font>" if p2_url else ""
+
     # Meta Comparison Table
     meta_rows = [
         [Paragraph("COMPLETED JURISDICTIONS", styles["Mono"]), Paragraph(f"<b>Policy A:</b> {p1_country} ({p1_year})<br/><b>Policy B:</b> {p2_country} ({p2_year})", styles["Body"])],
-        [Paragraph("POLICY A TITLE", styles["Mono"]), Paragraph(p1_title, styles["Body"])],
-        [Paragraph("POLICY B TITLE", styles["Mono"]), Paragraph(p2_title, styles["Body"])],
+        [Paragraph("POLICY A TITLE", styles["Mono"]), Paragraph(f"<b>{p1_title}</b>{p1_link_html}", styles["Body"])],
+        [Paragraph("POLICY B TITLE", styles["Mono"]), Paragraph(f"<b>{p2_title}</b>{p2_link_html}", styles["Body"])],
         [Paragraph("COMPOSITE SIMILARITY", styles["Mono"]), Paragraph(f"<b>{int(composite * 100)}%</b> — {sim_label.upper()} ALIGNMENT", styles["Body"])],
         [Paragraph("GENERATED TIMESTAMP", styles["Mono"]), Paragraph(datetime.now().strftime("%B %d, %Y"), styles["Body"])],
     ]
@@ -825,9 +891,12 @@ def generate_recommendations_pdf(rec_data: dict) -> bytes:
     story.append(Paragraph(f"A 5-factor machine learning evaluation identifying global jurisdictions with the highest priority gaps and compatibility readiness to adopt the target framework.", styles["Subtitle"]))
     story.append(Spacer(1, 16))
 
+    src_url = src_pol.get("source_url") or ""
+    src_link_html = f"<br/><font size='8' color='#5c9e2e'>Source Link: <u><a href='{src_url}'>{src_url}</a></u></font>" if src_url else ""
+
     # Meta Info Table
     meta_rows = [
-        [Paragraph("SOURCE FRAMEWORK", styles["Mono"]), Paragraph(f"<b>{src_title}</b>", styles["Body"])],
+        [Paragraph("SOURCE FRAMEWORK", styles["Mono"]), Paragraph(f"<b>{src_title}</b>{src_link_html}", styles["Body"])],
         [Paragraph("ORIGIN JURISDICTION", styles["Mono"]), Paragraph(f"{src_country} ({src_year})", styles["Body"])],
         [Paragraph("SECTOR DOMAIN", styles["Mono"]), Paragraph(src_sector, styles["Body"])],
         [Paragraph("FACTOR WEIGHTS APPLIED", styles["Mono"]), Paragraph(f"Gap Severity: {int(weights.get('sector_gap', 0.35)*100)}% | Infrastructure: {int(weights.get('regulatory_maturity', 0.25)*100)}%<br/>Intent Match: {int(weights.get('semantic_need', 0.20)*100)}% | Geopolitical Peer: {int(weights.get('regional_pressure', 0.12)*100)}%<br/>Developmental: {int(weights.get('economic_tier', 0.08)*100)}%", styles["Body"])],
