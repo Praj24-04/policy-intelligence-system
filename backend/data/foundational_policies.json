@@ -75,7 +75,7 @@
         "status": "Active",
         "year": 2023,
         "version": "1.0",
-        "source_url": "https://www.meity.gov.in/data-protection-framework"
+        "source_url": "https://www.meity.gov.in/"
     },
     {
         "id": "core_in_posh",
@@ -88,7 +88,7 @@
         "status": "Active",
         "year": 2013,
         "version": "1.0",
-        "source_url": "https://wcd.nic.in/act/sexual-harassment-women-workplace-prevention-prohibition-and-redressal-act-2013"
+        "source_url": "https://www.poshatwork.com/"
     },
     {
         "id": "core_cn_pipl",
@@ -101,7 +101,7 @@
         "status": "Active",
         "year": 2021,
         "version": "1.0",
-        "source_url": "http://en.npc.gov.cn.cdurl.cn/2021-12/29/c_694559.htm"
+        "source_url": "https://www.chinalawtranslate.com/en/personal-information-protection-law/"
     },
     {
         "id": "core_ru_152fz",
@@ -114,7 +114,7 @@
         "status": "Active",
         "year": 2006,
         "version": "Amended 2022",
-        "source_url": "https://pd.rkn.gov.ru/authority/p146/p164/"
+        "source_url": "https://en.wikipedia.org/wiki/Federal_Law_on_Personal_Data"
     },
     {
         "id": "core_br_lgpd",
@@ -127,7 +127,7 @@
         "status": "Active",
         "year": 2018,
         "version": "1.0",
-        "source_url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm"
+        "source_url": "https://www.lgpd-brazil.info/"
     },
     {
         "id": "core_za_popia",
