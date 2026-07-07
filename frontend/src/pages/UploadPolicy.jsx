@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Upload, FileText, Sparkles, CheckCircle2 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { getToken } from "../services/api";
+import { getToken, BASE, clearApiCache } from "../services/api";
 
 const MaturityColor = {
   nascent:    { bg: "rgba(244,63,94,0.08)",  border: "rgba(244,63,94,0.2)",   text: "#f43f5e" },
@@ -37,7 +37,7 @@ export default function UploadPolicy() {
 
     try {
       const token = getToken();
-      const res = await fetch("http://localhost:8000/api/upload/pdf", {
+      const res = await fetch(`${BASE}/upload/pdf`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: formData,
@@ -45,6 +45,7 @@ export default function UploadPolicy() {
       const data = await res.json();
       if (res.status === 401) throw new Error("Session expired. Please log in again.");
       if (!res.ok) throw new Error(data.detail || "Upload failed");
+      clearApiCache();
       setResult(data);
     } catch (err) {
       setError(err.message);
@@ -499,10 +500,61 @@ export default function UploadPolicy() {
               </span>
             </div>
 
+            {/* Scoring Legend Card */}
+            <div style={{
+              background: "var(--bg-hover)",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              padding: "16px 20px",
+              marginBottom: "20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#5c9e2e" }} />
+                <span style={{ fontSize: "11px", fontFamily: "JetBrains Mono", color: "var(--text-main)", fontWeight: 600, letterSpacing: "0.08em" }}>
+                  NEED INDEX METHODOLOGY & LEGEND
+                </span>
+              </div>
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0, lineHeight: "1.5", fontFamily: "DM Sans" }}>
+                The Need Index (from <code style={{ fontFamily: "JetBrains Mono", color: "var(--cyan)" }}>0.000</code> to <code style={{ fontFamily: "JetBrains Mono", color: "var(--cyan)" }}>1.000</code>) is computed dynamically using our multi-factor scoring system:
+              </p>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: "10px",
+                marginTop: "6px"
+              }}>
+                {[
+                  { name: "Sector Gap Severity (35%)", desc: "Absence of active legislation in primary sector." },
+                  { name: "Statutory Infrastructure (25%)", desc: "Country's baseline regulatory maturity tier." },
+                  { name: "Legislative Intent (20%)", desc: "Semantic alignment using Legal-BERT embeddings." },
+                  { name: "Geopolitical Peer (12%)", desc: "Adoption velocity in adjacent regional markets." },
+                  { name: "Developmental Tier (8%)", desc: "Socioeconomic and GDP tier alignment." }
+                ].map((f, idx) => (
+                  <div key={idx} style={{
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "6px",
+                    padding: "8px 12px",
+                    fontSize: "12px",
+                    fontFamily: "DM Sans"
+                  }}>
+                    <div style={{ fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
+                      {f.name}
+                    </div>
+                    <span style={{ color: "var(--text-muted)", fontSize: "11px", display: "block", lineHeight: "1.3" }}>{f.desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {result.recommendations.map((rec, i) => {
                 const mc = MaturityColor[rec.regulatory_maturity] || MaturityColor.developing;
-                const needPct = Math.round(rec.need_score * 100);
+                const needPctVal = rec.need_score * 100;
+                const needPct = needPctVal.toFixed(1);
                 const needColor = rec.need_score > 0.6 ? "#f43f5e" : rec.need_score > 0.4 ? "#f59e0b" : "#5c9e2e";
 
                 return (
@@ -569,11 +621,11 @@ export default function UploadPolicy() {
                         <div style={{
                           fontFamily: "'DM Sans', sans-serif",
                           fontWeight: 700,
-                          fontSize: "32px",
+                          fontSize: "28px",
                           color: needColor,
                           lineHeight: 1
                         }}>
-                          {needPct}%
+                          {rec.need_score.toFixed(3)}
                         </div>
                       </div>
                     </div>

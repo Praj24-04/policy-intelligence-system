@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { fetchOverview, fetchSectorDist, fetchRegionDist, fetchTrends, fetchCountries } from "../services/api";
+import { useEffect, useState, useRef } from "react";
+import { fetchOverview, fetchSectorDist, fetchRegionDist, fetchTrends, fetchCountries, BASE } from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { FileText, Globe, Layers, Map, RotateCw } from "lucide-react";
 import {
@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [loading,      setLoading]      = useState(true);
   const [fetchStatus,  setFetchStatus]  = useState(null);
   const [fetching,     setFetching]     = useState(false);
+  const [progress,     setProgress]     = useState({ status: "idle" });
   const [hoveredRegion, setHoveredRegion] = useState(null);
   const [fetchHover,   setFetchHover]   = useState(false);
 
@@ -72,22 +73,69 @@ export default function Dashboard() {
       setLoading(false);
     });
 
-    // Fetch live pipeline status
-    fetch("http://localhost:8000/api/fetch/status")
+    // Fetch initial live pipeline status
+    fetch(`${BASE}/fetch/status`)
       .then(r => r.json())
       .then(setFetchStatus)
       .catch(() => {});
+
+    // Initial check on mount
+    fetch(`${BASE}/fetch/progress`)
+      .then(r => r.json())
+      .then(data => {
+        setProgress(data);
+        if (data.status !== "idle") {
+          setFetching(true);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  // Poll progress status every 3 seconds only while active
+  useEffect(() => {
+    if (!fetching) return;
+
+    const check = () => {
+      fetch(`${BASE}/fetch/progress`)
+        .then(r => r.json())
+        .then(data => {
+          setProgress(data);
+          if (data.status === "idle") {
+            setFetching(false);
+          }
+        })
+        .catch(() => {});
+    };
+
+    const interval = setInterval(check, 3000);
+    return () => clearInterval(interval);
+  }, [fetching]);
+
+  // Refresh status and stats when fetching completes
+  useEffect(() => {
+    if (progress.status === "idle" && !loading) {
+      Promise.all([
+        fetchOverview(), fetchSectorDist(), fetchRegionDist(), fetchTrends(), fetchCountries()
+      ]).then(([ov, sec, reg, tr, ctr]) => {
+        setOverview(ov);
+        setSectors(Object.entries(sec || {}).map(([name, value]) => ({ name, value })));
+        setTrends(Object.entries(tr || {}).map(([year, count]) => ({ year: String(year), count })));
+        setAllCountries(ctr || {});
+        setCountries(Object.entries(ctr || {}).sort((a,b) => b[1]-a[1]).slice(0,8)
+          .map(([name, value]) => ({ name: name.replace("European Union","EU").replace("United States","USA").replace("United Kingdom","UK"), value })));
+      });
+
+      fetch(`${BASE}/fetch/status`)
+        .then(r => r.json())
+        .then(setFetchStatus)
+        .catch(() => {});
+    }
+  }, [progress.status]);
 
   const triggerFetch = async () => {
     setFetching(true);
     try {
-      await fetch("http://localhost:8000/api/fetch/trigger", { method: "POST" });
-      setTimeout(() => {
-        fetch("http://localhost:8000/api/fetch/status")
-          .then(r => r.json())
-          .then(d => { setFetchStatus(d); setFetching(false); });
-      }, 5000);
+      await fetch(`${BASE}/fetch/trigger`, { method: "POST" });
     } catch {
       setFetching(false);
     }
@@ -241,96 +289,128 @@ export default function Dashboard() {
             flexShrink: 0
           }} />
 
-          {/* CENTER — Single line description */}
-          <div style={{
-            flexShrink: 0,
-            fontSize: "11px",
-            fontFamily: "DM Sans",
-            color: "var(--text-muted)",
-            whiteSpace: "nowrap"
-          }}>
-            15 curated · {fetchStatus?.live_fetched || 0} live · refreshes every 24h
-          </div>
-
-          {/* THIN DIVIDER */}
-          <div style={{
-            width: "1px",
-            height: "16px",
-            background: "var(--border)",
-            flexShrink: 0
-          }} />
-
-          {/* SOURCE PILLS row */}
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            flexShrink: 0
-          }}>
+          {/* CENTER — Progress or description */}
+          {progress.status !== "idle" ? (
             <div style={{
+              flex: 1,
               display: "flex",
               alignItems: "center",
-              gap: "5px",
-              background: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              borderRadius: "20px",
-              padding: "3px 10px",
-              whiteSpace: "nowrap"
+              gap: "8px",
+              fontSize: "11px",
+              fontFamily: "JetBrains Mono",
+              color: "#5c9e2e",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis"
             }}>
-              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--text-dim)" }} />
-              <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
-                Curated · 15
+              <span className="pulse-dot" style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: "#5c9e2e",
+                display: "inline-block",
+                boxShadow: "0 0 8px #5c9e2e",
+                flexShrink: 0
+              }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                <strong>{progress.task_name ? progress.task_name.toUpperCase() : "PROCESSING"}</strong>
+                {progress.total_policies > 0 ? ` (${progress.processed_policies}/${progress.total_policies})` : ""}
+                {progress.current_policy_title ? ` : ${progress.current_policy_title}` : ""}
               </span>
             </div>
+          ) : (
+            <>
+              <div style={{
+                flexShrink: 0,
+                fontSize: "11px",
+                fontFamily: "DM Sans",
+                color: "var(--text-muted)",
+                whiteSpace: "nowrap"
+              }}>
+                15 curated · {fetchStatus?.live_fetched || 0} live · refreshes every 24h
+              </div>
 
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-              background: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              borderRadius: "20px",
-              padding: "3px 10px",
-              whiteSpace: "nowrap"
-            }}>
-              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#5c9e2e" }} />
-              <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
-                EUR-Lex · {fetchStatus?.sources?.eurlex?.count || 0}
-              </span>
-            </div>
+              {/* THIN DIVIDER */}
+              <div style={{
+                width: "1px",
+                height: "16px",
+                background: "var(--border)",
+                flexShrink: 0
+              }} />
 
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-              background: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              borderRadius: "20px",
-              padding: "3px 10px",
-              whiteSpace: "nowrap"
-            }}>
-              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#5c9e2e" }} />
-              <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
-                CISA KEV · {fetchStatus?.sources?.cisa?.count || 0}
-              </span>
-            </div>
+              {/* SOURCE PILLS row */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                flexShrink: 0
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "20px",
+                  padding: "3px 10px",
+                  whiteSpace: "nowrap"
+                }}>
+                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "var(--text-dim)" }} />
+                  <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
+                    Curated · 15
+                  </span>
+                </div>
 
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-              background: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              borderRadius: "20px",
-              padding: "3px 10px",
-              whiteSpace: "nowrap"
-            }}>
-              <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#5c9e2e" }} />
-              <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
-                US Fed Register · {fetchStatus?.sources?.fedreg?.count || 0}
-              </span>
-            </div>
-          </div>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "20px",
+                  padding: "3px 10px",
+                  whiteSpace: "nowrap"
+                }}>
+                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#5c9e2e" }} />
+                  <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
+                    EUR-Lex · {fetchStatus?.sources?.eurlex?.count || 0}
+                  </span>
+                </div>
+
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "20px",
+                  padding: "3px 10px",
+                  whiteSpace: "nowrap"
+                }}>
+                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#5c9e2e" }} />
+                  <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
+                    CISA KEV · {fetchStatus?.sources?.cisa?.count || 0}
+                  </span>
+                </div>
+
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "20px",
+                  padding: "3px 10px",
+                  whiteSpace: "nowrap"
+                }}>
+                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#5c9e2e" }} />
+                  <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono", color: "var(--text-muted)" }}>
+                    US Fed Register · {fetchStatus?.sources?.fedreg?.count || 0}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* RIGHT — Timestamp + Button */}
           <div style={{

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchPolicies, fetchRecommendations, submitFeedback, generatePolicyTemplate, getToken } from "../services/api";
+import { fetchPolicies, fetchRecommendations, submitFeedback, generatePolicyTemplate, getToken, BASE } from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { Sparkles, ExternalLink, Copy, ThumbsUp, ThumbsDown, Target, Shield, Search, FileDown } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
@@ -161,7 +161,7 @@ export default function Recommend() {
   const handleDownloadRecsPDF = () => {
     if (!selected) return;
     const { sector_gap, regulatory_maturity, semantic_need, regional_pressure, economic_tier } = weights;
-    let url = `http://localhost:8000/api/recommend/download/${selected.id}?top_n=6`;
+    let url = `${BASE}/recommend/download/${selected.id}?top_n=6`;
     if (sector_gap !== undefined) url += `&w_sector=${sector_gap / 100}`;
     if (regulatory_maturity !== undefined) url += `&w_maturity=${regulatory_maturity / 100}`;
     if (semantic_need !== undefined) url += `&w_semantic=${semantic_need / 100}`;
@@ -173,7 +173,7 @@ export default function Recommend() {
 
   const downloadProposalPDF = (proposalData) => {
     if (!proposalData || !proposalData.policy_id) return;
-    const url = `http://localhost:8000/api/generate/download/${proposalData.policy_id}`;
+    const url = `${BASE}/generate/download/${proposalData.policy_id}`;
     window.open(url, '_blank');
   };
 
@@ -865,6 +865,56 @@ export default function Recommend() {
             {result && !loading && (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
+                {/* Scoring Legend Card */}
+                <div style={{
+                  background: "var(--bg-hover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  padding: "16px 20px",
+                  marginBottom: "8px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Target size={14} color="var(--accent)" />
+                    <span style={{ fontSize: "12px", fontFamily: "JetBrains Mono", color: "var(--text-main)", fontWeight: 600 }}>
+                      NEED INDEX METHODOLOGY & LEGEND
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0, lineHeight: "1.5" }}>
+                    The Need Index is a normalized metric from <code style={{ fontFamily: "JetBrains Mono", color: "var(--cyan)" }}>0.000</code> to <code style={{ fontFamily: "JetBrains Mono", color: "var(--cyan)" }}>1.000</code> calculated using a multi-factor regulatory alignment heuristic. To avoid arbitrary thresholds, the system computes the score dynamically using the following weights:
+                  </p>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                    gap: "10px",
+                    marginTop: "8px"
+                  }}>
+                    {[
+                      { name: "Sector Gap Severity", w: weights.sector_gap, desc: "Absence of active legislation in primary sector." },
+                      { name: "Statutory Infrastructure", w: weights.regulatory_maturity, desc: "Country's baseline regulatory maturity tier." },
+                      { name: "Legislative Intent", w: weights.semantic_need, desc: "Semantic alignment using Legal-BERT embeddings." },
+                      { name: "Geopolitical Peer Pressure", w: weights.regional_pressure, desc: "Adoption velocity in adjacent regional markets." },
+                      { name: "Developmental Tier", w: weights.economic_tier, desc: "Socioeconomic and GDP tier alignment." }
+                    ].map((f, i) => (
+                      <div key={i} style={{
+                        background: "var(--bg-card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        padding: "8px 12px",
+                        fontSize: "12px"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
+                          <span>{f.name}</span>
+                          <span style={{ color: "var(--cyan)" }}>{f.w}%</span>
+                        </div>
+                        <span style={{ color: "var(--text-muted)", fontSize: "11px", display: "block", lineHeight: "1.3" }}>{f.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Factor Weights Panel */}
                 <div style={{
                   background: "var(--bg-card)",
@@ -1161,10 +1211,10 @@ export default function Recommend() {
                 {/* Recommendations Cards Stack */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {result.recommendations.map((rec, i) => {
-                    const needPercent = Math.round(rec.need_score * 100);
-                    const colorAccent = needPercent > 85 
+                    const needPercentVal = rec.need_score * 100;
+                    const colorAccent = needPercentVal > 85 
                       ? "#5c9e2e" 
-                      : needPercent > 70 
+                      : needPercentVal > 70 
                         ? "#d97706" 
                         : "#2563eb";
 
@@ -1256,16 +1306,16 @@ export default function Recommend() {
 
                             <div style={{ textAlign: "right" }}>
                               <div style={{ fontSize: "11px", fontFamily: "JetBrains Mono", color: "#9ca3af" }}>
-                                NEED SCORE
+                                NEED INDEX
                               </div>
                               <div style={{
                                 fontFamily: "DM Sans",
-                                fontSize: "38px",
+                                fontSize: "28px",
                                 fontWeight: 700,
                                 color: colorAccent,
                                 lineHeight: "1"
                               }}>
-                                {needPercent}%
+                                {rec.need_score.toFixed(3)}
                               </div>
                             </div>
                           </div>

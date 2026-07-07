@@ -22,7 +22,7 @@ class GeneratePolicyRequest(BaseModel):
 def generate_policy(req: GeneratePolicyRequest):
     """
     POST /api/generate/policy
-    Generates a structured policy document from Claude using aggregated intelligence.
+    Generates a structured policy document from Gemini using aggregated intelligence.
     """
     if not req.country or not req.sector:
         raise HTTPException(status_code=400, detail="Country and sector are required fields.")
@@ -40,7 +40,7 @@ def generate_policy(req: GeneratePolicyRequest):
         _generated_policies[policy_id] = result
         return result
     except ValueError as ve:
-        # Anthropic key not set or invalid
+        # Google key not set or invalid
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(ve))

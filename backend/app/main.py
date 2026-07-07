@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
 from app.routes import policies, analytics, compare, recommend, upload, auth, fetch, feedback, generate, ml
@@ -11,16 +11,35 @@ setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup validation check for LLM provider configuration
+    import os
+    llm_provider = os.getenv("LLM_PROVIDER", "auto").lower()
+    google_key = os.getenv("GOOGLE_API_KEY", "")
+    
+    if llm_provider == "gemini":
+        if not google_key:
+            print("\n" + "="*80)
+            print(" WARNING:")
+            print(" GOOGLE_API_KEY not configured.")
+            print(" PolicyIQ will operate in DEMO MODE using sector templates.")
+            print("="*80 + "\n")
+    elif llm_provider == "auto":
+        if not google_key:
+            print("\n" + "="*80)
+            print(" WARNING:")
+            print(" GOOGLE_API_KEY is not configured.")
+            print(" PolicyIQ will operate in DEMO MODE using sector templates.")
+            print("="*80 + "\n")
+
     init_db()
 
     # Pre-warm NER cache
     from app.services.nlp_service import prewarm_ner_cache
     prewarm_ner_cache()
 
-    # Train ML model in background so it doesn't block server startup
+    # V2 recommender pre-computes country need embeddings on import
+    # No explicit startup training needed
     import threading
-    from app.services.recommender import _load_and_train
-    threading.Thread(target=_load_and_train, daemon=True).start()
 
     # Start live fetch scheduler (EUR-Lex + CISA refresh every 24 hours)
     from app.services.scheduler import start_scheduler as start_fetch_scheduler
@@ -64,6 +83,13 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan
 )
+
+@app.middleware("http")
+async def force_ssl_redirect_scheme(request: Request, call_next):
+    if request.headers.get("x-forwarded-proto") == "https":
+        request.scope["scheme"] = "https"
+    response = await call_next(request)
+    return response
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

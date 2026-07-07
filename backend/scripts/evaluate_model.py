@@ -1,10 +1,8 @@
 import sys
 sys.path.insert(0, '.')
 
-from app.services.recommender import get_recommendations, _ensure_trained
+from app.ml.recommender_v2 import get_recommendations_v2
 import numpy as np
-
-_ensure_trained()
 
 all_policy_ids = [
     # AI Governance
@@ -22,13 +20,13 @@ print("\n" + "="*60)
 print("MODEL EVALUATION REPORT")
 print("="*60)
 
-# ── 1. Score Distribution Analysis ──────────────────────────
+# -- 1. Score Distribution Analysis --------------------------
 all_scores = []
 sector_scores = {"AI Governance": [], "Cybersecurity": [], "Data Privacy": []}
 country_frequency = {}
 
 for pid in all_policy_ids:
-    result = get_recommendations(pid, top_n=6)
+    result = get_recommendations_v2(pid, top_n=6)
     sector = result["source_policy"]["sector"]
     
     for rec in result["recommendations"]:
@@ -41,15 +39,15 @@ for pid in all_policy_ids:
             country_frequency[country] = 0
         country_frequency[country] += 1
 
-print("\n📊 SCORE DISTRIBUTION (all policies):")
+print("\n[STATS] SCORE DISTRIBUTION (all policies):")
 print(f"  Mean score:    {np.mean(all_scores):.3f}")
-print(f"  Std deviation: {np.std(all_scores):.3f}  ← higher = more varied = better")
+print(f"  Std deviation: {np.std(all_scores):.3f}  <- higher = more varied = better")
 print(f"  Min score:     {np.min(all_scores):.3f}")
 print(f"  Max score:     {np.max(all_scores):.3f}")
 print(f"  Range:         {np.max(all_scores) - np.min(all_scores):.3f}")
 
-# ── 2. Bias Check ────────────────────────────────────────────
-print("\n🎯 BIAS CHECK (per sector mean scores):")
+# -- 2. Bias Check --------------------------------------------
+print("\n[BIAS] BIAS CHECK (per sector mean scores):")
 for sector, scores in sector_scores.items():
     print(f"  {sector}: mean={np.mean(scores):.3f}, std={np.std(scores):.3f}")
 
@@ -57,17 +55,17 @@ sector_means = [np.mean(s) for s in sector_scores.values()]
 bias = np.std(sector_means)
 print(f"\n  Inter-sector bias: {bias:.3f}")
 if bias < 0.05:
-    print("  ✅ LOW BIAS — sectors treated fairly")
+    print("  [OK] LOW BIAS - sectors treated fairly")
 elif bias < 0.15:
-    print("  ⚠️  MODERATE BIAS — slight sector preference")
+    print("  [WARN] MODERATE BIAS - slight sector preference")
 else:
-    print("  ❌ HIGH BIAS — model favors certain sectors")
+    print("  [ERROR] HIGH BIAS - model favors certain sectors")
 
-# ── 3. Variance Check ────────────────────────────────────────
-print("\n📈 VARIANCE CHECK:")
+# -- 3. Variance Check ----------------------------------------
+print("\n[VARIANCE] VARIANCE CHECK:")
 policy_top_countries = {}
 for pid in all_policy_ids:
-    result = get_recommendations(pid, top_n=3)
+    result = get_recommendations_v2(pid, top_n=3)
     top3 = [r["country"] for r in result["recommendations"]]
     policy_top_countries[pid] = top3
 
@@ -77,29 +75,29 @@ unique_top1 = len(set(top1_countries))
 print(f"  Unique #1 recommended countries: {unique_top1} / {len(all_policy_ids)} policies")
 
 if unique_top1 <= 3:
-    print("  ❌ HIGH VARIANCE ISSUE — same countries dominate all recommendations")
+    print("  [ERROR] HIGH VARIANCE ISSUE - same countries dominate all recommendations")
 elif unique_top1 <= 8:
-    print("  ⚠️  MODERATE — some variety but limited")
+    print("  [WARN] MODERATE - some variety but limited")
 else:
-    print("  ✅ GOOD VARIETY — different countries recommended for different policies")
+    print("  [OK] GOOD VARIETY - different countries recommended for different policies")
 
-# ── 4. Country Frequency (Dominance Check) ───────────────────
-print("\n🌍 COUNTRY RECOMMENDATION FREQUENCY (out of 30 policies × 6 recs = 180 slots):")
+# -- 4. Country Frequency (Dominance Check) -------------------
+print("\n[DOMINANCE] COUNTRY RECOMMENDATION FREQUENCY (out of 30 policies x 6 recs = 180 slots):")
 sorted_freq = sorted(country_frequency.items(), key=lambda x: -x[1])
 for country, freq in sorted_freq[:10]:
-    bar = "█" * freq
+    bar = "|" * freq
     pct = freq / 180 * 100
-    flag = "❌ DOMINANT" if pct > 20 else "⚠️" if pct > 12 else "✅"
+    flag = "[ERROR] DOMINANT" if pct > 20 else "[WARN]" if pct > 12 else "[OK]"
     print(f"  {country:<25} {freq:>3}x ({pct:.1f}%) {bar} {flag}")
 
-# ── 5. Cross-sector Differentiation ─────────────────────────
-print("\n🔄 CROSS-SECTOR DIFFERENTIATION:")
+# -- 5. Cross-sector Differentiation -------------------------
+print("\n[DIFFERENTIATION] CROSS-SECTOR DIFFERENTIATION:")
 ai_top = set()
 cyber_top = set()
 priv_top = set()
 
 for pid in all_policy_ids:
-    result = get_recommendations(pid, top_n=3)
+    result = get_recommendations_v2(pid, top_n=3)
     sector = result["source_policy"]["sector"]
     countries = set(r["country"] for r in result["recommendations"])
     
@@ -114,30 +112,77 @@ ai_cyber_overlap = len(ai_top & cyber_top) / len(ai_top | cyber_top)
 ai_priv_overlap = len(ai_top & priv_top) / len(ai_top | priv_top)
 cyber_priv_overlap = len(cyber_top & priv_top) / len(cyber_top | priv_top)
 
-print(f"  AI Governance ↔ Cybersecurity overlap: {ai_cyber_overlap:.2f}  (lower = more differentiated)")
-print(f"  AI Governance ↔ Data Privacy overlap:  {ai_priv_overlap:.2f}")
-print(f"  Cybersecurity ↔ Data Privacy overlap:  {cyber_priv_overlap:.2f}")
+print(f"  AI Governance <-> Cybersecurity overlap: {ai_cyber_overlap:.2f}  (lower = more differentiated)")
+print(f"  AI Governance <-> Data Privacy overlap:  {ai_priv_overlap:.2f}")
+print(f"  Cybersecurity <-> Data Privacy overlap:  {cyber_priv_overlap:.2f}")
 
 avg_overlap = np.mean([ai_cyber_overlap, ai_priv_overlap, cyber_priv_overlap])
 if avg_overlap < 0.4:
-    print(f"\n  ✅ GOOD DIFFERENTIATION — sectors recommend different countries (avg overlap: {avg_overlap:.2f})")
+    print(f"\n  [OK] GOOD DIFFERENTIATION - sectors recommend different countries (avg overlap: {avg_overlap:.2f})")
 elif avg_overlap < 0.6:
-    print(f"\n  ⚠️  MODERATE — some cross-sector similarity (avg overlap: {avg_overlap:.2f})")
+    print(f"\n  [WARN] MODERATE - some cross-sector similarity (avg overlap: {avg_overlap:.2f})")
 else:
-    print(f"\n  ❌ POOR DIFFERENTIATION — sectors too similar (avg overlap: {avg_overlap:.2f})")
+    print(f"\n  [ERROR] POOR DIFFERENTIATION - sectors too similar (avg overlap: {avg_overlap:.2f})")
 
-# ── 6. Final Verdict ─────────────────────────────────────────
+# -- 6. Final Verdict -----------------------------------------
 print("\n" + "="*60)
 print("FINAL VERDICT")
 print("="*60)
 score_std = np.std(all_scores)
 if score_std > 0.08 and unique_top1 > 6 and avg_overlap < 0.6:
-    print("✅ MODEL IS WORKING WELL")
+    print("[OK] MODEL IS WORKING WELL")
     print("   Good score variation, country diversity, sector differentiation")
 elif score_std > 0.05 and unique_top1 > 4:
-    print("⚠️  MODEL IS ACCEPTABLE")
+    print("[WARN] MODEL IS ACCEPTABLE")
     print("   Some variation exists but could be improved")
 else:
-    print("❌ MODEL HAS ISSUES")
+    print("[ERROR] MODEL HAS ISSUES")
     print("   Scores too uniform or countries too repetitive")
 print("="*60)
+
+# -- 7. Cluster Quality Metrics (Silhouette & Davies-Bouldin) --
+print("\n[STATS] SYSTEM-WIDE CLUSTER QUALITY METRICS (HDBSCAN):")
+try:
+    from app.database import get_connection
+    from sklearn.metrics import silhouette_score, davies_bouldin_score
+    
+    conn = get_connection()
+    # Load all policies that have embeddings and a valid cluster_id
+    rows = conn.execute(
+        "SELECT id, cluster_id, embedding FROM policies WHERE embedding IS NOT NULL AND cluster_id IS NOT NULL"
+    ).fetchall()
+    conn.close()
+    
+    if len(rows) > 0:
+        # Extract embeddings and labels
+        def parse_emb(val):
+            if isinstance(val, str):
+                return [float(x) for x in val.strip('[]').split(',') if x.strip()]
+            return list(val)
+        
+        X = np.array([parse_emb(r["embedding"]) for r in rows], dtype=np.float32)
+        y = np.array([int(r["cluster_id"]) for r in rows])
+        
+        # Filter out noise points (-1) for cluster quality metrics
+        clean_mask = y != -1
+        if np.sum(clean_mask) > 0 and len(set(y[clean_mask])) > 1:
+            X_clean = X[clean_mask]
+            y_clean = y[clean_mask]
+            
+            sil_cos = silhouette_score(X_clean, y_clean, metric='cosine')
+            db_idx = davies_bouldin_score(X_clean, y_clean)
+            
+            print(f"  Total policies evaluated : {len(rows)}")
+            print(f"  Clustered (non-noise)    : {len(y_clean)}  ({len(y_clean)/len(rows)*100:.1f}%)")
+            print(f"  Noise / outlier policies : {len(rows) - len(y_clean)}  ({(len(rows) - len(y_clean))/len(rows)*100:.1f}%)")
+            print(f"  Unique clusters          : {len(set(y_clean))}")
+            print(f"  Silhouette Coeff (Cosine): {sil_cos:.4f}  (higher is better, range [-1, 1])")
+            print(f"  Davies-Bouldin Index     : {db_idx:.4f}  (lower is better, range [0, inf])")
+            print("  [OK] Metric calculation completed successfully.")
+        else:
+            print("  [WARN] Insufficient clusters or all points classified as noise.")
+    else:
+        print("  [WARN] No policy embeddings found in database.")
+except Exception as e:
+    print(f"  [ERROR] Error calculating cluster metrics: {e}")
+print("="*60 + "\n")

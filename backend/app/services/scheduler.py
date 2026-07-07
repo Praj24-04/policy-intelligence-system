@@ -11,8 +11,9 @@ def start_scheduler():
     if _scheduler_started:
         return
 
-    from app.services.policy_fetcher import run_full_fetch
     import threading
+    from app.database import get_connection
+    from app.services.policy_fetcher import run_full_fetch
 
     def initial_fetch():
         logger.info("Running initial multi-source policy fetch in background...")
@@ -25,7 +26,19 @@ def start_scheduler():
         except Exception as e:
             logger.warning(f"Initial fetch failed: {e}")
 
-    threading.Thread(target=initial_fetch, daemon=True).start()
+    conn = get_connection()
+    try:
+        policy_count = conn.execute("SELECT COUNT(*) FROM policies").fetchone()[0]
+    except Exception:
+        policy_count = 0
+    finally:
+        conn.close()
+
+    if policy_count > 15:
+        logger.info(f"Database already populated ({policy_count} policies). Skipping initial startup crawl.")
+    else:
+        logger.info(f"Database contains few policies ({policy_count}). Spawning initial crawl in background...")
+        threading.Thread(target=initial_fetch, daemon=True).start()
 
     scheduler.add_job(
         func=run_full_fetch,

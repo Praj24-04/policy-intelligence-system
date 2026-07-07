@@ -1,20 +1,38 @@
 import re
+import io
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
+    # Try using PyMuPDF (fitz) first for high performance
     try:
-        import fitz  # pymupdf
+        import fitz
         doc = fitz.open(stream=file_bytes, filetype="pdf")
         text_parts = []
         for page in doc:
             text = page.get_text("text")
-            text_parts.append(text)
+            if text:
+                text_parts.append(text)
         doc.close()
         full_text = "\n".join(text_parts)
         full_text = re.sub(r'\n{3,}', '\n\n', full_text)
         full_text = re.sub(r'[ \t]{2,}', ' ', full_text)
         return full_text.strip()
-    except Exception as e:
-        raise ValueError(f"Could not extract text from PDF: {e}")
+    except Exception as mupdf_err:
+        print(f"[WARN] PyMuPDF extraction failed or not installed: {mupdf_err}. Falling back to pdfplumber...")
+        # Fallback to pdfplumber which is guaranteed to be present
+        try:
+            import pdfplumber
+            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                text_parts = []
+                for page in pdf.pages:
+                    text = page.extract_text()
+                    if text:
+                        text_parts.append(text)
+                full_text = "\n".join(text_parts)
+                full_text = re.sub(r'\n{3,}', '\n\n', full_text)
+                full_text = re.sub(r'[ \t]{2,}', ' ', full_text)
+                return full_text.strip()
+        except Exception as plumber_err:
+            raise ValueError(f"Could not extract text from PDF using any parser. (PyMuPDF: {mupdf_err}; pdfplumber: {plumber_err})")
 
 
 def extract_policy_metadata(text: str) -> dict:

@@ -177,6 +177,22 @@ def init_db():
         except Exception:
             pass
 
+    # ── Database Indexes for Performance ───────────────────────────────
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_policies_sector ON policies(sector)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_policies_region ON policies(region)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_policies_status ON policies(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_policies_year ON policies(year)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_policies_country ON policies(country)")
+        conn.commit()
+        print("[OK] Database performance indexes verified/created")
+    except Exception as ie:
+        print(f"[WARN] Performance index creation skipped: {ie}")
+        try:
+            conn.conn.rollback()
+        except Exception:
+            pass
+
     conn.commit()
     conn.close()
     print("[OK] PostgreSQL Database initialized with auth + history tables")
@@ -237,7 +253,7 @@ def _seed_foundational_policies():
 
 
 def _seed_country_data():
-    """Load country profiles and needs into the database if not already present."""
+    """Load and synchronize country profiles and needs into the database from country_profiles.py."""
     try:
         from data.country_profiles import COUNTRY_PROFILES
     except ImportError:
@@ -245,55 +261,56 @@ def _seed_country_data():
         return
 
     conn = get_connection()
-    inserted_profiles = 0
-    inserted_needs = 0
+    synced_profiles = 0
+    synced_needs = 0
 
     for country, profile in COUNTRY_PROFILES.items():
         try:
-            existing = conn.execute(
-                "SELECT country FROM country_profiles WHERE country = %s", (country,)
-            ).fetchone()
-            if not existing:
-                conn.execute("""
-                    INSERT INTO country_profiles
-                    (country, region, gdp_tier, regulatory_maturity, context, priority_needs, existing_sectors)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s)
-                """, (
-                    country,
-                    profile["region"],
-                    profile["gdp_tier"],
-                    profile["regulatory_maturity"],
-                    profile["context"],
-                    json.dumps(profile.get("priority_needs", [])),
-                    json.dumps(profile.get("existing_sectors", []))
-                ))
-                inserted_profiles += 1
+            conn.execute("""
+                INSERT INTO country_profiles
+                (country, region, gdp_tier, regulatory_maturity, context, priority_needs, existing_sectors)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (country) DO UPDATE SET
+                region = EXCLUDED.region,
+                gdp_tier = EXCLUDED.gdp_tier,
+                regulatory_maturity = EXCLUDED.regulatory_maturity,
+                context = EXCLUDED.context,
+                priority_needs = EXCLUDED.priority_needs,
+                existing_sectors = EXCLUDED.existing_sectors
+            """, (
+                country,
+                profile["region"],
+                profile["gdp_tier"],
+                profile["regulatory_maturity"],
+                profile["context"],
+                json.dumps(profile.get("priority_needs", [])),
+                json.dumps(profile.get("existing_sectors", []))
+            ))
+            synced_profiles += 1
         except Exception as e:
-            print(f"  [WARN] Failed to seed profile for {country}: {e}")
+            print(f"  [WARN] Failed to seed/sync profile for {country}: {e}")
             try:
                 conn.conn.rollback()
             except Exception:
                 pass
 
-        # Also seed country_needs with the context as description
+        # Also seed/sync country_needs with the context as description
         try:
-            existing = conn.execute(
-                "SELECT country FROM country_needs WHERE country = %s", (country,)
-            ).fetchone()
-            if not existing:
-                need_desc = profile.get("context", f"{country} regulatory needs")
-                conn.execute("""
-                    INSERT INTO country_needs (country, description)
-                    VALUES (%s, %s)
-                """, (country, need_desc))
-                inserted_needs += 1
+            need_desc = profile.get("context", f"{country} regulatory needs")
+            conn.execute("""
+                INSERT INTO country_needs (country, description)
+                VALUES (%s, %s)
+                ON CONFLICT (country) DO UPDATE SET
+                description = EXCLUDED.description
+            """, (country, need_desc))
+            synced_needs += 1
         except Exception as e:
+            print(f"  [WARN] Failed to seed/sync need description for {country}: {e}")
             try:
                 conn.conn.rollback()
             except Exception:
                 pass
 
-    if inserted_profiles > 0 or inserted_needs > 0:
-        conn.commit()
+    conn.commit()
     conn.close()
-    print(f"[OK] Country data: {inserted_profiles} profiles, {inserted_needs} needs seeded")
+    print(f"[OK] Country data synced: {synced_profiles} profiles, {synced_needs} needs updated in database")

@@ -103,88 +103,103 @@ def _classify_sector(title: str, abstract: str = "") -> str:
     Returns None if document doesn't match any known sector."""
     t = ((title or "") + " " + (abstract or "")).lower()
     
+    # Privacy Act / System of Records is always Data Privacy
+    if "privacy act" in t or "system of records" in t:
+        return "Data Privacy"
+        
+    # Check POSH Policies first (high specificity)
+    if any(kw in t for kw in ["harassment", "sexual harassment", "posh", "pawahara", "power harassment", "workplace harassment"]):
+        return "POSH Policies"
+        
+    # Check Healthcare / Clinical Trials first (high specificity)
+    if any(kw in t for kw in ["healthcare", "medical device", "clinical", "health data", "hipaa",
+                               "electronic health", "telehealth", "patient data", "medical ai",
+                               "medicare", "medicaid", "hospital", "physician fee",
+                               "clinical trial", "clinical trials", "patient population"]):
+        return "Healthcare AI"
+
+    if any(kw in t for kw in ["digital markets act", "dma", "digital services act", "dsa", "gatekeeper", "online intermediation", "antitrust", "competition"]):
+        return "Data Privacy"
+        
     if any(kw in t for kw in ["artificial intelligence", "ai act", "ai governance", "algorithmic",
                                "machine learning", "deep learning", "autonomous system", "generative ai"]):
         return "AI Governance"
+        
     if any(kw in t for kw in ["cybersecurity", "cyber security", "cyber resilience", "network security",
                                "vulnerability", "exploit", "malware", "ransomware", "incident response",
                                "critical infrastructure protection", "information security"]):
         return "Cybersecurity"
+        
     if any(kw in t for kw in ["data protection", "data privacy", "privacy", "personal data", "gdpr",
                                "consumer data", "surveillance", "biometric", "facial recognition",
                                "data breach", "consent", "data subject"]):
         return "Data Privacy"
-    if any(kw in t for kw in ["healthcare", "medical device", "clinical", "health data", "hipaa",
-                               "electronic health", "telehealth", "patient data", "medical ai"]):
-        return "Healthcare AI"
-    if any(kw in t for kw in ["financial", "banking", "crypto", "digital asset", "payment",
-                               "securities", "fintech", "anti-money", "aml", "kyc"]):
+        
+    if any(kw in t for kw in ["financial", "banking", "crypto", "digital asset", "payment systems",
+                               "payment services", "electronic payment", "securities", "fintech",
+                               "anti-money", "aml", "kyc", "capital markets", "lending", "credit"]):
         return "Financial Regulation"
+        
     if any(kw in t for kw in ["iot", "internet of things", "robot", "drone", "autonomous vehicle",
                                "connected device", "smart device", "embedded system"]):
         return "IoT and Robotics"
+        
     if any(kw in t for kw in ["esg", "sustainability", "climate", "environmental", "carbon",
                                "green", "renewable", "emission", "biodiversity", "taxonomy"]):
         return "ESG Policies"
-    if any(kw in t for kw in ["harassment", "sexual harassment", "workplace safety", "posh",
-                               "equal opportunity", "discrimination", "whistleblower"]):
-        return "POSH Policies"
     
     return None  # Not relevant to any known sector
 
 
 def _detect_country(title: str, abstract: str, hint: str = None) -> str:
     """Detect which country a policy is most relevant to."""
-    if hint:
-        return hint
+    title_lower = (title or "").lower()
+    abstract_lower = (abstract or "").lower()
     
-    text = (title + " " + (abstract or "")).lower()
-    
-    # Check for country mentions in title/abstract (ordered by specificity)
-    country_keywords = {
-        "south korea": "South Korea",
-        "south africa": "South Africa",
-        "saudi arabia": "Saudi Arabia",
-        "united arab emirates": "United Arab Emirates",
-        "united kingdom": "United Kingdom",
-        "new zealand": "New Zealand",
-        "india": "India",
-        "china": "China",
-        "chinese": "China",
-        "japan": "Japan",
-        "japanese": "Japan",
-        "brazil": "Brazil",
-        "brazilian": "Brazil",
-        "singapore": "Singapore",
-        "australia": "Australia",
-        "australian": "Australia",
-        "canada": "Canada",
-        "canadian": "Canada",
-        "korea": "South Korea",
-        "korean": "South Korea",
-        "germany": "Germany",
-        "german": "Germany",
-        "france": "France",
-        "french": "France",
-        "nigeria": "Nigeria",
-        "nigerian": "Nigeria",
-        "kenya": "Kenya",
-        "kenyan": "Kenya",
-        "indonesia": "Indonesia",
-        "indonesian": "Indonesia",
-        "mexico": "Mexico",
-        "mexican": "Mexico",
-        "argentina": "Argentina",
-        "uae": "United Arab Emirates",
-        "uk": "United Kingdom",
-        "british": "United Kingdom",
+    country_variants = {
+        "India": ["india", "indian"],
+        "Japan": ["japan", "japanese"],
+        "Australia": ["australia", "australian"],
+        "Canada": ["canada", "canadian"],
+        "South Korea": ["south korea", "korea", "korean"],
+        "South Africa": ["south africa", "south african"],
+        "Saudi Arabia": ["saudi arabia", "saudi"],
+        "United Arab Emirates": ["united arab emirates", "uae"],
+        "United Kingdom": ["united kingdom", "uk", "british"],
+        "Germany": ["germany", "german"],
+        "France": ["france", "french"],
+        "Nigeria": ["nigeria", "nigerian"],
+        "Kenya": ["kenya", "kenyan"],
+        "Indonesia": ["indonesia", "indonesian"],
+        "Mexico": ["mexico", "mexican"],
+        "Argentina": ["argentina", "argentine"],
+        "Brazil": ["brazil", "brazilian"],
+        "China": ["china", "chinese"],
+        "Singapore": ["singapore", "singaporean"],
+        "European Union": ["european union", "eu", "eur-lex", "celex"],
     }
-    
-    for keyword, country in country_keywords.items():
-        if keyword in text:
+
+    if hint and hint in country_variants:
+        if any(v in title_lower for v in country_variants[hint]):
+            return hint
+
+    # Scan title for other countries
+    for country, variants in country_variants.items():
+        if any(v in title_lower for v in variants):
             return country
-    
+
+    # Conservative check in abstract (must appear at least twice to avoid casual comparisons)
+    if hint and hint in country_variants:
+        if any(abstract_lower.count(v) >= 2 for v in country_variants[hint]):
+            return hint
+
+    for country, variants in country_variants.items():
+        if any(abstract_lower.count(v) >= 2 for v in variants):
+            return country
+
     return "United States"  # Default for Federal Register
+
+
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -197,8 +212,8 @@ EURLEX_SEARCH_TERMS = [
     ("cyber resilience", "Cybersecurity"),
     ("data protection", "Data Privacy"),
     ("privacy", "Data Privacy"),
-    ("digital services", "AI Governance"),
-    ("digital markets", "AI Governance"),
+    ("digital services", "Data Privacy"),
+    ("digital markets", "Data Privacy"),
     ("electronic communications", "Data Privacy"),
     ("financial technology", "Financial Regulation"),
     ("crypto-assets", "Financial Regulation"),
@@ -662,6 +677,9 @@ def run_full_fetch() -> dict:
     Tries all sources with graceful fallback.
     """
     global _last_fetch_result
+    from app.services.progress_service import update_progress
+
+    update_progress(status="fetching", task_name="Multi-source policy fetch", total=3, processed=0, current_title="Connecting to EUR-Lex...")
 
     print("\n" + "=" * 60)
     print("POLICY INTELLIGENCE PIPELINE - Multi-source live fetch")
@@ -693,6 +711,7 @@ def run_full_fetch() -> dict:
 
     # 2. CISA KEV (US Cybersecurity)
     try:
+        update_progress(processed=1, current_title="Fetching from CISA KEV...")
         cisa_policies = fetch_from_cisa()
         source_results["cisa"]["count"] = len(cisa_policies)
         source_results["cisa"]["status"] = "success"
@@ -708,6 +727,7 @@ def run_full_fetch() -> dict:
 
     # 3. Federal Register (US Regulations)
     try:
+        update_progress(processed=2, current_title="Fetching from Federal Register...")
         fedreg_policies = fetch_from_federal_register()
         source_results["fedreg"]["count"] = len(fedreg_policies)
         source_results["fedreg"]["status"] = "success"
@@ -739,6 +759,16 @@ def run_full_fetch() -> dict:
     print(f"   Federal Register:  {source_results['fedreg']['count']:>4} fetched, {source_results['fedreg']['inserted']:>4} new [{source_results['fedreg']['status']}]")
     print(f"   TOTAL:             {total_inserted:>4} inserted, {total_duplicates:>4} duplicates skipped")
     print(f"{'=' * 60}\n")
+
+    if total_inserted > 0:
+        try:
+            from app.services.cache_service import backend_cache
+            backend_cache.clear()
+            print("[OK] Backend cache cleared due to new database insertions")
+        except Exception as ce:
+            print(f"[WARN] Failed to clear backend cache: {ce}")
+
+    update_progress(status="idle", task_name="", total=0, processed=0, current_title="")
 
     return summary
 

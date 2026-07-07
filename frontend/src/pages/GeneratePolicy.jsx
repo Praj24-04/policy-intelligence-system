@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { Sparkles, FileDown, RotateCcw, AlertTriangle } from "lucide-react";
+import { BASE, clearApiCache } from "../services/api";
 
 const FALLBACK_COUNTRIES = [
   "India", "United States", "European Union", "Brazil", "China", 
@@ -23,6 +24,17 @@ const LOADING_MESSAGES = [
   "Finalizing framework..."
 ];
 
+const renderFormattedText = (text) => {
+  if (!text) return "";
+  const parts = text.split("**");
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      return <strong key={i} style={{ fontWeight: 700, color: "var(--text-main)" }}>{part}</strong>;
+    }
+    return part;
+  });
+};
+
 export default function GeneratePolicy() {
   const [country, setCountry] = useState("");
   const [sector, setSector] = useState("");
@@ -42,8 +54,8 @@ export default function GeneratePolicy() {
     async function loadMeta() {
       try {
         const [cRes, sRes] = await Promise.all([
-          fetch("http://localhost:8000/api/generate/countries"),
-          fetch("http://localhost:8000/api/generate/sectors")
+          fetch(`${BASE}/generate/countries`),
+          fetch(`${BASE}/generate/sectors`)
         ]);
         if (cRes.ok) {
           const cData = await cRes.json();
@@ -77,7 +89,7 @@ export default function GeneratePolicy() {
       setPreviewLoading(true);
       try {
         const res = await fetch(
-          `http://localhost:8000/api/generate/context-preview?country=${encodeURIComponent(country)}&sector=${encodeURIComponent(sector)}`
+          `${BASE}/generate/context-preview?country=${encodeURIComponent(country)}&sector=${encodeURIComponent(sector)}`
         );
         if (res.ok) {
           const data = await res.json();
@@ -123,7 +135,7 @@ export default function GeneratePolicy() {
       .filter(Boolean);
 
     try {
-      const res = await fetch("http://localhost:8000/api/generate/policy", {
+      const res = await fetch(`${BASE}/generate/policy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -138,6 +150,7 @@ export default function GeneratePolicy() {
       if (!res.ok) {
         throw new Error(data.detail || "Verification failed during LLM generation.");
       }
+      clearApiCache();
       setResult(data);
     } catch (err) {
       setError(err.message || "An unexpected network or pipeline error occurred.");
@@ -148,7 +161,7 @@ export default function GeneratePolicy() {
 
   const handleDownload = () => {
     if (!result) return;
-    window.open(`http://localhost:8000/api/generate/download/${result.policy_id}`, "_blank");
+    window.open(`${BASE}/generate/download/${result.policy_id}`, "_blank");
   };
 
   const resetGenerator = () => {
@@ -634,6 +647,30 @@ export default function GeneratePolicy() {
       {/* STEP 4 - Generated Document Display */}
       {result && !generating && (
         <div style={{ animation: "fadeIn 0.4s ease-out" }}>
+          {/* Demo Mode Alert Banner */}
+          {result.demo_mode && (
+            <div style={{
+              background: "#fffbeb",
+              border: "1px solid #feebc8",
+              borderRadius: "8px",
+              padding: "16px 20px",
+              marginBottom: "24px",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "12px"
+            }}>
+              <AlertTriangle size={20} style={{ color: "#dd6b20", marginTop: "2px", flexShrink: 0 }} />
+              <div>
+                <h4 style={{ margin: "0 0 4px 0", fontSize: "14.5px", fontWeight: 600, color: "#dd6b20" }}>
+                  Operating in Demo Mode
+                </h4>
+                <p style={{ margin: 0, fontSize: "13.5px", color: "#744210", lineHeight: "1.5" }}>
+                  No active Google Gemini API key was found in the system environment. The policy framework below has been generated from a high-fidelity sector-specific mockup template.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Document Header Bar */}
           <div style={{
             display: "flex",
@@ -642,16 +679,34 @@ export default function GeneratePolicy() {
             marginBottom: "20px"
           }}>
             <div>
-              <span style={{
-                display: "block",
-                fontSize: "10px",
-                fontFamily: "'JetBrains Mono', monospace",
-                color: "#9ca3af",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase"
-              }}>
-                Generated Framework
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{
+                  display: "block",
+                  fontSize: "10px",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: "#9ca3af",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase"
+                }}>
+                  Generated Framework
+                </span>
+                {result.demo_mode && (
+                  <span style={{
+                    fontSize: "9px",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontWeight: 600,
+                    color: "#dd6b20",
+                    background: "#feebc8",
+                    border: "1px solid #fbd38d",
+                    borderRadius: "4px",
+                    padding: "2px 6px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px"
+                  }}>
+                    Demo Mode
+                  </span>
+                )}
+              </div>
               <h2 style={{
                 fontSize: "22px",
                 fontWeight: 700,
@@ -745,9 +800,10 @@ export default function GeneratePolicy() {
               color: "#374151",
               lineHeight: "1.8",
               textAlign: "justify",
-              marginBottom: "16px"
+              marginBottom: "16px",
+              whiteSpace: "pre-line"
             }}>
-              <b>Executive Summary:</b> {result.document.executive_summary}
+              <b>Executive Summary:</b> {renderFormattedText(result.document.executive_summary)}
             </p>
             <div style={{ height: "1px", background: "#f0f0f0", marginBottom: "16px" }} />
             <p style={{
@@ -755,9 +811,10 @@ export default function GeneratePolicy() {
               color: "#6b7280",
               lineHeight: "1.8",
               textAlign: "justify",
-              fontStyle: "italic"
+              fontStyle: "italic",
+              whiteSpace: "pre-line"
             }}>
-              <b>Legislative Preamble:</b> {result.document.preamble}
+              <b>Legislative Preamble:</b> {renderFormattedText(result.document.preamble)}
             </p>
           </div>
 
@@ -805,9 +862,10 @@ export default function GeneratePolicy() {
                     color: "#374151",
                     lineHeight: "1.8",
                     textAlign: "justify",
-                    margin: 0
+                    margin: 0,
+                    whiteSpace: "pre-line"
                   }}>
-                    {section.content}
+                    {renderFormattedText(section.content)}
                   </p>
 
                   {/* Subsections if they exist */}
@@ -839,9 +897,10 @@ export default function GeneratePolicy() {
                             lineHeight: "1.75",
                             textAlign: "justify",
                             margin: 0,
-                            paddingLeft: "13px"
+                            paddingLeft: "13px",
+                            whiteSpace: "pre-line"
                           }}>
-                            {sub.content}
+                            {renderFormattedText(sub.content)}
                           </p>
                         </div>
                       ))}

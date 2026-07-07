@@ -1,13 +1,45 @@
-const BASE = (import.meta.env && import.meta.env.VITE_API_URL) || 
-             (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || 
-             "http://localhost:8000/api";
+const getApiBase = () => {
+  const override = typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem("API_URL_OVERRIDE");
+  if (override) {
+    return override;
+  }
+
+  const envUrl = (import.meta.env && import.meta.env.VITE_API_URL) || 
+                 (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL);
+  if (envUrl) {
+    if (window.location.protocol === 'https:' && envUrl.startsWith('http://') && envUrl.includes(window.location.hostname)) {
+      return envUrl.replace('http://', 'https://');
+    }
+    return envUrl;
+  }
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return "http://localhost:8000/api";
+  }
+  return "/api";
+};
+
+export const BASE = getApiBase();
+
 
 export const getToken = () => {
   return localStorage.getItem("token");
 };
 
+let cache = {};
+const CACHE_TTL = 60000; // 60 seconds
+
+export const clearApiCache = () => {
+  cache = {};
+};
+
 const get = (url) => {
-  return fetch(`${BASE}${url}`, {
+  const now = Date.now();
+  const cached = cache[url];
+  if (cached && (now - cached.timestamp < CACHE_TTL)) {
+    return cached.promise;
+  }
+
+  const fetchPromise = fetch(`${BASE}${url}`, {
     headers: {
       "Authorization": `Bearer ${getToken()}`,
       "Content-Type": "application/json",
@@ -23,8 +55,16 @@ const get = (url) => {
     return r.json();
   })
   .catch(err => {
+    delete cache[url];
     return null;
   });
+
+  cache[url] = {
+    promise: fetchPromise,
+    timestamp: now
+  };
+
+  return fetchPromise;
 };
 
 // ── Auth ───────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchSectorDist, fetchRegionDist, fetchTrends, fetchCountries, fetchStatus } from "../services/api";
+import { fetchSectorDist, fetchRegionDist, fetchTrends, fetchCountries, fetchStatus, fetchFeedbackSummary } from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -152,8 +152,7 @@ export default function Analytics() {
         setLoading(false);
       });
 
-    fetch("http://localhost:8000/api/feedback/summary")
-      .then(r => r.json())
+    fetchFeedbackSummary()
       .then(setFeedbackStats)
       .catch(() => {});
   }, []);

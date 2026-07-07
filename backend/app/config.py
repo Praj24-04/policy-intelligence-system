@@ -26,6 +26,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:admin123@localho
 # Whitelisted clients. Comma-separated list in env: "https://domain.com,http://localhost:3000"
 raw_cors = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:5173")
 CORS_ORIGINS = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
+for local_origin in ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173"]:
+    if local_origin not in CORS_ORIGINS:
+        CORS_ORIGINS.append(local_origin)
 
 # ── Email Service Settings ─────────────────────────────────────────────────
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
@@ -37,9 +40,11 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 # ── Google Authentication ──────────────────────────────────────────────────
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
-# ── Anthropic API (Policy Generator) ───────────────────────────────────────
-# Needed for actual Claude model generation
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+# ── LLM Provider Configuration (Policy Generator) ──────────────────────────
+# Supports: gemini, mock, auto
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
 # ── Logging Settings ──────────────────────────────────────────────────────
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

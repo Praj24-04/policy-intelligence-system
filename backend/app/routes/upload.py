@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from app.services.pdf_service import extract_text_from_pdf, extract_policy_metadata
 from app.services.nlp_service import extract_countries
-from app.services.recommender import get_recommendations_for_text
+from app.ml.recommender_v2 import get_recommendations_for_text
 from app.auth import get_current_user
 from app.database import get_connection
 import json
@@ -42,6 +42,9 @@ async def upload_policy_pdf(
         title=metadata["title"]
     )
     
+    final_title = recommendations.get("detected_title") or metadata["title"]
+    final_tags = recommendations.get("detected_tags") or metadata["tags"]
+    
     # Save transaction to database history for profile audit
     conn = get_connection()
     try:
@@ -53,8 +56,8 @@ async def upload_policy_pdf(
             (
                 current_user["id"],
                 file.filename,
-                metadata["title"],
-                json.dumps(metadata["tags"]),
+                final_title,
+                json.dumps(final_tags),
                 len(text.split()),
                 json.dumps({
                     "year": metadata["year"],
@@ -70,14 +73,15 @@ async def upload_policy_pdf(
     
     return {
         "filename": file.filename,
-        "title": metadata["title"],
+        "title": final_title,
         "year": metadata["year"],
-        "tags": metadata["tags"],
+        "tags": final_tags,
         "extracted_countries": extracted_countries,
         "detected_sector": recommendations.get("detected_sector"),
         "content_preview": text[:500] + "..." if len(text) > 500 else text,
         "word_count": len(text.split()),
         "recommendations": recommendations["recommendations"],
         "similar_policies": recommendations["similar_policies"],
-        "ml_method": recommendations["ml_method"]
+        "ml_method": recommendations["ml_method"],
+        "executive_summary": recommendations.get("executive_summary", "")
     }

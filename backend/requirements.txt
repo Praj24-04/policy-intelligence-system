@@ -25,4 +25,12 @@ chromadb
 rank-bm25
 apscheduler
 pdfplumber
+pymupdf
 slowapi
+
+# Additional Core/ML/Doc Dependencies
+email-validator
+google-generativeai
+reportlab
+python-dotenv
+requests

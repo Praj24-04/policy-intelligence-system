@@ -200,7 +200,14 @@ def _parse_tags(raw_tags):
 
 def load_policies(sector=None, region=None, search=None, status=None):
     conn = get_connection()
-    query = "SELECT * FROM policies WHERE 1=1"
+    query = """
+        SELECT id, title, sector, region, country, 
+               SUBSTRING(content FROM 1 FOR 400) AS content, 
+               tags, status, year, version, source_url, 
+               key_requirements, timeline_phases, extracted_countries_cache,
+               cluster_id, cluster_confidence, embedding_model, last_embedded_at
+        FROM policies WHERE 1=1
+    """
     params = []
 
     if sector:
@@ -224,11 +231,13 @@ def load_policies(sector=None, region=None, search=None, status=None):
         p["tags"] = _parse_tags(p.get("tags"))
         p["tags"] = rank_tags_by_frequency(p)
 
-        cached = _get_cached_countries(p["id"], conn)
-        if cached is not None:
-            p["extracted_countries"] = cached
+        cached_str = p.get("extracted_countries_cache")
+        if cached_str:
+            try:
+                p["extracted_countries"] = json.loads(cached_str)
+            except Exception:
+                p["extracted_countries"] = [p["country"]] if p.get("country") else []
         else:
-            # Use country field directly for speed
             p["extracted_countries"] = [p["country"]] if p.get("country") else []
 
         result.append(p)
@@ -251,10 +260,12 @@ def get_policy_by_id(policy_id: str):
     p["tags"] = _parse_tags(p.get("tags"))
     p["tags"] = rank_tags_by_frequency(p)
 
-    # Check cache first
-    cached = _get_cached_countries(p["id"], conn)
-    if cached is not None:
-        p["extracted_countries"] = cached
+    cached_str = p.get("extracted_countries_cache")
+    if cached_str:
+        try:
+            p["extracted_countries"] = json.loads(cached_str)
+        except Exception:
+            p["extracted_countries"] = [p.get("country", "")]
     else:
         try:
             countries = extract_countries_smart(p)

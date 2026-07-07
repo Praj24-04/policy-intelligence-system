@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { fetchPolicies, comparePolicies, getToken } from "../services/api";
+import { fetchPolicies, comparePolicies, getToken, BASE } from "../services/api";
 import SectorBadge from "../components/SectorBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { GitCompare, CheckCircle2, XCircle, Lightbulb, RotateCcw, FileDown, Search } from "lucide-react";
@@ -56,7 +56,7 @@ export default function Compare() {
 
   const handleDownloadPDF = () => {
     if (!sel1 || !sel2) return;
-    const downloadUrl = `http://localhost:8000/api/compare/download?id1=${sel1.id}&id2=${sel2.id}`;
+    const downloadUrl = `${BASE}/compare/download?id1=${sel1.id}&id2=${sel2.id}`;
     window.open(downloadUrl, '_blank');
   };
 

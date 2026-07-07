@@ -1,13 +1,24 @@
+import json
 from collections import Counter
-from app.services.nlp_service import load_policies
 from app.database import get_connection
 
 def get_country_distribution():
-    policies = load_policies()  # Load more for distribution
+    conn = get_connection()
+    rows = conn.execute("SELECT country, extracted_countries_cache FROM policies").fetchall()
+    conn.close()
     counts = Counter()
-    for p in policies:
-        for c in p["extracted_countries"]:
-            counts[c] += 1
+    for r in rows:
+        cached_str = r["extracted_countries_cache"]
+        if cached_str:
+            try:
+                countries = json.loads(cached_str)
+                for c in countries:
+                    counts[c] += 1
+                continue
+            except Exception:
+                pass
+        if r["country"]:
+            counts[r["country"]] += 1
     return dict(counts)
 
 def get_sector_distribution():

@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Query
-from app.services.recommender import get_recommendations, get_cluster_summary
-from app.ml.recommender_v2 import get_recommendations_v2
+from app.ml.recommender_v2 import get_recommendations_v2, get_cluster_summary
 
 router = APIRouter()
 
@@ -73,7 +72,6 @@ def recommend_v2(
 def recommend(
     policy_id: str, 
     top_n: int = 5, 
-    use_v2: bool = True,
     w_sector: float = Query(None),
     w_maturity: float = Query(None),
     w_semantic: float = Query(None),
@@ -81,7 +79,4 @@ def recommend(
     w_economic: float = Query(None)
 ):
     weights = _parse_weights(w_sector, w_maturity, w_semantic, w_regional, w_economic)
-    if use_v2:
-        return get_recommendations_v2(policy_id, top_n, weights)
-    else:
-        return get_recommendations(policy_id, top_n)
+    return get_recommendations_v2(policy_id, top_n, weights)

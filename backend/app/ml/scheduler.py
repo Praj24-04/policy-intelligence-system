@@ -15,6 +15,7 @@ from app.ml.embedder import embed_policy
 from app.ml.embedding_store import store_embedding
 from app.ml.vector_store import sync_policy_to_chroma, rebuild_chroma_index
 from app.ml.clusterer import _clusterer, run_clustering_job
+from app.services.progress_service import update_progress
 
 
 async def embed_new_policies():
@@ -51,24 +52,26 @@ async def embed_new_policies():
 
     total = len(rows)
     print(f"[SCHEDULER] Found {total} unembedded policies. Starting embedding process...")
+    update_progress(status="embedding", task_name="Embedding new policies", total=total, processed=0, current_title="")
 
     embedded_count = 0
     for row in rows:
         p = dict(row)
         pid = p["id"]
         title = p["title"]
+        update_progress(processed=embedded_count, current_title=title)
         try:
             # 1. Call embed_policy()
-            emb = embed_policy(p)
+            emb = await asyncio.to_thread(embed_policy, p)
 
             # 2. Call store_embedding()
-            store_embedding(pid, emb, "nlpaueb/legal-bert-base-uncased")
+            await asyncio.to_thread(store_embedding, pid, emb, "nlpaueb/legal-bert-base-uncased")
 
             # 3. Call sync_policy_to_chroma()
-            sync_policy_to_chroma(p, emb)
+            await asyncio.to_thread(sync_policy_to_chroma, p, emb)
 
             # 4. Predict cluster
-            cluster_id, confidence = _clusterer.predict_single(emb)
+            cluster_id, confidence = await asyncio.to_thread(_clusterer.predict_single, emb)
 
             # 5. Update cluster_id and confidence in PostgreSQL
             conn = get_connection()
@@ -91,6 +94,7 @@ async def embed_new_policies():
         except Exception as e:
             print(f"[SCHEDULER] Failed to process policy '{title}' ({pid}): {e}")
 
+    update_progress(status="idle", task_name="", total=0, processed=0, current_title="")
     print(f"[SCHEDULER] Embedding job complete. Successfully embedded {embedded_count}/{total} policies.")
 
 
@@ -100,12 +104,14 @@ async def weekly_retrain():
     Runs full clustering job and rebuilds the ChromaDB vector index.
     """
     print("[SCHEDULER] Executing weekly scheduled retrain...")
+    update_progress(status="clustering", task_name="UMAP & HDBSCAN Re-clustering", total=0, processed=0, current_title="Running UMAP dimensionality reduction...")
     try:
         # 1. Call run_clustering_job()
-        summary = run_clustering_job()
+        summary = await asyncio.to_thread(run_clustering_job)
 
+        update_progress(current_title="Rebuilding ChromaDB Index...")
         # 2. Call rebuild_chroma_index()
-        rebuild_chroma_index()
+        await asyncio.to_thread(rebuild_chroma_index)
 
         # 3. Log full cluster summary
         print("\n=== Weekly Cluster Summary ===")
@@ -119,6 +125,8 @@ async def weekly_retrain():
         print("[SCHEDULER] Weekly retrain complete.")
     except Exception as e:
         print(f"[SCHEDULER] Error during scheduled weekly retrain: {e}")
+    finally:
+        update_progress(status="idle", task_name="", total=0, processed=0, current_title="")
 
 
 def start_scheduler():

@@ -2,18 +2,134 @@ import os
 import json
 import uuid
 from datetime import datetime
-from anthropic import Anthropic
+import google.generativeai as genai
 from app.database import get_connection
 from app.ml.vector_store import semantic_search
 from data.country_profiles import COUNTRY_PROFILES
+from app.services.sector_templates import SECTOR_FALLBACK_TEMPLATES
+from app.config import GOOGLE_API_KEY, LLM_PROVIDER, GEMINI_MODEL
 
-# Initialize Anthropic API Client
-from app.config import ANTHROPIC_API_KEY
-api_key = ANTHROPIC_API_KEY
-if not api_key:
-    # We will raise a ValueError if the key is missing when the functions are called
-    # but do not crash on import so that the app still boots.
-    print("[WARN] ANTHROPIC_API_KEY is not set in environment.")
+# Configure Gemini if GOOGLE_API_KEY is configured
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+
+def lookup_policy_url_in_db(title: str, country: str = None) -> str:
+    """
+    Looks up a policy in the database by title and country to find its true source_url.
+    """
+    if not title:
+        return None
+    try:
+        conn = get_connection()
+        try:
+            # 1. Exact match by title and country
+            if country:
+                row = conn.execute(
+                    "SELECT source_url FROM policies WHERE LOWER(title) = %s AND LOWER(country) = %s",
+                    (title.lower().strip(), country.lower().strip())
+                ).fetchone()
+                if row and row["source_url"]:
+                    return row["source_url"]
+            
+            # 2. Exact match by title
+            row = conn.execute(
+                "SELECT source_url FROM policies WHERE LOWER(title) = %s",
+                (title.lower().strip(),)
+            ).fetchone()
+            if row and row["source_url"]:
+                return row["source_url"]
+
+            # 3. Substring match by title
+            row = conn.execute(
+                "SELECT source_url FROM policies WHERE LOWER(title) LIKE %s",
+                (f"%{title.lower().strip()}%",)
+            ).fetchone()
+            if row and row["source_url"]:
+                return row["source_url"]
+        finally:
+            conn.close()
+    except Exception as e:
+        print(f"[WARN] Database lookup failed for title '{title}': {e}")
+    return None
+
+def sanitize_source_url(url: str, title: str, country: str) -> str:
+    url = (url or "").strip()
+    url_lower = url.lower()
+    
+    # Check for known broken URLs or redirect patterns
+    if "estrategia-nacional-de-seguranca-cibernetica" in url_lower or "copy_of_dsic" in url_lower or "dsi/estrategia" in url_lower:
+        return "https://www.gov.br/gsi/pt-br/seguranca-da-informacao-e-cibernetica"
+    
+    if "ebia.pdf" in url_lower or "ebia-documento_referencia" in url_lower or "transformacaodigital/arquivosdigital" in url_lower:
+        return "https://www.gov.br/mcti/pt-br/acompanhe-o-mcti/transformacaodigital/inteligencia-artificial"
+
+    # If the URL is empty or invalid (e.g. doesn't start with http), fall back to google search
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        import urllib.parse
+        q = urllib.parse.quote_plus(f"{title} {country} policy framework")
+        return f"https://www.google.com/search?q={q}"
+        
+    return url
+
+def post_process_generated_document(result: dict, context: dict) -> dict:
+    """
+    Sanitizes reference links in the generated document to prevent LLM hallucinations.
+    """
+    if not result or "document" not in result:
+        return result
+        
+    document = result["document"]
+    if not isinstance(document, dict) or "references" not in document:
+        return result
+        
+    refs = document["references"]
+    if not isinstance(refs, list):
+        return result
+        
+    context_refs = context.get("reference_policies", [])
+    
+    for ref in refs:
+        if not isinstance(ref, dict):
+            continue
+            
+        gen_title = ref.get("title", "").lower().strip()
+        gen_country = ref.get("country", "").lower().strip()
+        
+        # Try to match to one of the 5 reference policies in context
+        best_match = None
+        for cr in context_refs:
+            cr_title = cr.get("title", "").lower().strip()
+            if gen_title == cr_title or cr_title in gen_title or gen_title in cr_title:
+                best_match = cr
+                break
+                
+        if not best_match:
+            for cr in context_refs:
+                cr_country = cr.get("country", "").lower().strip()
+                if gen_country == cr_country:
+                    best_match = cr
+                    break
+                    
+        # Determine raw URL from matched reference or database lookup
+        raw_url = ""
+        if best_match:
+            raw_url = best_match.get("source_url") or ""
+            # Synchronize title and country with the database record
+            ref["title"] = best_match.get("title")
+            ref["country"] = best_match.get("country")
+        else:
+            # Query full database to see if we can find this policy
+            db_url = lookup_policy_url_in_db(ref.get("title"), ref.get("country"))
+            if db_url:
+                raw_url = db_url
+            else:
+                raw_url = ref.get("source_url") or ""
+                
+        # Clean and sanitize the URL using helper
+        ref["source_url"] = sanitize_source_url(raw_url, ref.get("title", ""), ref.get("country", ""))
+        
+    return result
+
 
 def _parse_list(value):
     if value is None:
@@ -62,19 +178,40 @@ def build_generation_context(country: str, sector: str) -> dict:
     finally:
         conn.close()
 
-    # 3. Retrieve Top 5 reference policies from OTHER countries in same sector
+    # 3. Retrieve Top 10 reference policies from OTHER countries in same sector
     reference_policies = []
+    retrieval_metadata = {
+        "sector": sector,
+        "documents_retrieved": 0,
+        "unique_documents": 0,
+        "top_similarity": 0.0,
+        "countries_referenced": []
+    }
+    
     try:
         search_query = f"{sector} policy framework {country}"
         raw_matches = semantic_search(
             query_text=search_query,
-            n=5,
+            n=10,
             sector_filter=sector,
             exclude_country=country
         )
+        
+        # Deduplicate references by title (keeping highest scoring)
+        seen_titles = set()
+        deduplicated_matches = []
+        for m in raw_matches:
+            title_clean = m["title"].lower().strip()
+            if title_clean not in seen_titles:
+                seen_titles.add(title_clean)
+                deduplicated_matches.append(m)
+                
+        # Take the top 5 distinct/diverse ones
+        selected_matches = deduplicated_matches[:5]
+        
         conn = get_connection()
         try:
-            for m in raw_matches:
+            for m in selected_matches:
                 policy_id = m["id"]
                 # Query postgres to get the true source_url for this reference
                 row = conn.execute("SELECT source_url FROM policies WHERE id = %s", (policy_id,)).fetchone()
@@ -91,6 +228,27 @@ def build_generation_context(country: str, sector: str) -> dict:
                 })
         finally:
             conn.close()
+            
+        # Compile diagnostics
+        retrieved_count = len(raw_matches)
+        unique_count = len(seen_titles)
+        top_sim = raw_matches[0]["approx_similarity"] if raw_matches else 0.0
+        countries_ref = list(set(m["country"] for m in selected_matches if m.get("country")))
+        
+        retrieval_metadata = {
+            "sector": sector,
+            "documents_retrieved": retrieved_count,
+            "unique_documents": unique_count,
+            "top_similarity": round(top_sim, 4),
+            "countries_referenced": countries_ref
+        }
+        
+        print(f"\n[RETRIEVAL AUDIT]")
+        print(f"Sector: {sector}")
+        print(f"Retrieved: {retrieved_count} docs")
+        print(f"Unique: {unique_count} docs")
+        print(f"Top similarity: {round(top_sim, 4)}\n")
+        
     except Exception as e:
         print(f"[ERROR] Failed to query semantic references for context: {e}")
 
@@ -109,12 +267,25 @@ def build_generation_context(country: str, sector: str) -> dict:
     gaps = reference_tags - existing_tags
     # Fallback to some default gaps if sets are empty
     if not gaps:
-        if sector == "Cybersecurity":
+        sector_lower = sector.lower()
+        if "esg" in sector_lower:
+            gaps = {"climate disclosure", "sustainability reporting", "board accountability", "supply chain transparency", "emissions reporting"}
+        elif "posh" in sector_lower:
+            gaps = {"internal complaints committee", "investigation procedure", "anti-retaliation protection"}
+        elif "financial" in sector_lower:
+            gaps = {"capital adequacy", "consumer protection", "risk controls"}
+        elif "healthcare" in sector_lower:
+            gaps = {"clinical validation", "patient safety", "auditability"}
+        elif "privacy" in sector_lower:
+            gaps = {"consent management", "data subject rights", "data fiduciary oversight", "breach notifications"}
+        elif "cyber" in sector_lower:
             gaps = {"incident response plans", "supply chain oversight", "critical infrastructure baselines"}
-        elif sector == "AI Governance":
+        elif "ai" in sector_lower:
             gaps = {"algorithmic transparency", "human-in-the-loop oversight", "model risk assessments"}
+        elif "iot" in sector_lower or "robot" in sector_lower:
+            gaps = {"embedded systems security", "physical safety overrides", "firmware update validation"}
         else:
-            gaps = {"audit logs", "compliance penalties", "monitoring metrics"}
+            gaps = {"compliance auditing", "oversight mechanisms", "reporting requirements"}
 
     # 5. Build maturity context
     maturity = profile.get("regulatory_maturity", "developing")
@@ -130,155 +301,245 @@ def build_generation_context(country: str, sector: str) -> dict:
         "existing_count": len(existing_policies),
         "existing_policies": existing_policies,
         "reference_policies": reference_policies,
-        "gaps": list(gaps)
+        "gaps": list(gaps),
+        "retrieval_metadata": retrieval_metadata
     }
+
+def get_sector_institutions(country: str, sector: str) -> dict:
+    default = {
+        "authority": f"National Joint Council for {sector} / Department of Digital Services",
+        "cert": "National Cyber Defense Centre (NCDC)",
+        "appellate": "National Administrative Tribunal",
+        "commission": f"Department of Technology & Standards"
+    }
+    
+    sector_lower = sector.lower()
+    
+    # 1. Tech / AI Governance / Healthcare AI / IoT
+    if any(k in sector_lower for k in ["ai", "robot", "iot", "governance"]):
+        if country == "United States":
+            return {
+                "authority": "Federal Artificial Intelligence Council (FAIC) / National Institute of Standards and Technology (NIST)",
+                "cert": "CISA (Cybersecurity and Infrastructure Security Agency)",
+                "appellate": "Federal Courts of Appeals",
+                "commission": "Federal Trade Commission (FTC)"
+            }
+        elif country == "India":
+            return {
+                "authority": "National AI Regulatory Authority (NAIRA) / Ministry of Electronics and Information Technology (MeitY)",
+                "cert": "CERT-In (Indian Computer Emergency Response Team)",
+                "appellate": "Telecom Disputes Settlement and Appellate Tribunal (TDSAT)",
+                "commission": "National AI Commission"
+            }
+        elif country == "European Union":
+            return {
+                "authority": "European Artificial Intelligence Board (EAIB)",
+                "cert": "ENISA (European Union Agency for Cybersecurity)",
+                "appellate": "Court of Justice of the European Union",
+                "commission": "European Commission"
+            }
+            
+    # 2. Cybersecurity / Data Privacy
+    elif any(k in sector_lower for k in ["cyber", "privacy", "data"]):
+        if country == "United States":
+            return {
+                "authority": "Federal Trade Commission (FTC) / Cybersecurity and Infrastructure Security Agency (CISA)",
+                "cert": "CISA (Cybersecurity and Infrastructure Security Agency)",
+                "appellate": "Federal Courts of Appeals",
+                "commission": "Federal Trade Commission (FTC)"
+            }
+        elif country == "India":
+            return {
+                "authority": "Data Protection Board of India (DPBI) / Ministry of Electronics and Information Technology (MeitY)",
+                "cert": "CERT-In (Indian Computer Emergency Response Team)",
+                "appellate": "Telecom Disputes Settlement and Appellate Tribunal (TDSAT)",
+                "commission": "Ministry of Electronics and Information Technology (MeitY)"
+            }
+        elif country == "European Union":
+            return {
+                "authority": "European Data Protection Board (EDPB)",
+                "cert": "ENISA (European Union Agency for Cybersecurity)",
+                "appellate": "Court of Justice of the European Union",
+                "commission": "European Commission"
+            }
+            
+    # 3. ESG Policies / Financial Regulation
+    elif any(k in sector_lower for k in ["esg", "financial", "regulation", "sustainability"]):
+        if country == "United States":
+            return {
+                "authority": "Securities and Exchange Commission (SEC) / Environmental Protection Agency (EPA)",
+                "cert": "SEC Enforcement Division",
+                "appellate": "Federal District Courts",
+                "commission": "Securities and Exchange Commission (SEC)"
+            }
+        elif country == "India":
+            return {
+                "authority": "Securities and Exchange Board of India (SEBI) / Ministry of Finance",
+                "cert": "SEBI ESG Advisory Committee",
+                "appellate": "Securities Appellate Tribunal (SAT)",
+                "commission": "Securities and Exchange Board of India (SEBI)"
+            }
+        elif country == "European Union":
+            return {
+                "authority": "European Securities and Markets Authority (ESMA)",
+                "cert": "ESMA Sustainability Division",
+                "appellate": "Court of Justice of the European Union",
+                "commission": "European Commission DG Financial Stability"
+            }
+            
+    # 4. POSH Policies
+    elif "posh" in sector_lower or "harassment" in sector_lower:
+        if country == "United States":
+            return {
+                "authority": "Equal Employment Opportunity Commission (EEOC) / Department of Labor",
+                "cert": "EEOC Enforcement Division",
+                "appellate": "Federal Appeals Courts",
+                "commission": "Equal Employment Opportunity Commission (EEOC)"
+            }
+        elif country == "India":
+            return {
+                "authority": "Ministry of Women and Child Development / Local Complaints Committee (LCC)",
+                "cert": "District Officer / Internal Complaints Committee (ICC)",
+                "appellate": "Industrial Tribunal / Central Administrative Tribunal",
+                "commission": "Ministry of Women and Child Development"
+            }
+        elif country == "European Union":
+            return {
+                "authority": "European Institute for Gender Equality (EIGE) / DG Employment",
+                "cert": "National Equality Bodies",
+                "appellate": "Court of Justice of the European Union",
+                "commission": "European Commission"
+            }
+            
+    return default
+
+def validate_policy_document_content(sector: str, doc: dict) -> tuple[bool, str]:
+    """
+    Validates that the generated policy framework text adheres to sector-specific constraints.
+    Returns (is_valid, error_reason).
+    """
+    import json
+    doc_str = json.dumps(doc).lower()
+    sector_lower = sector.lower()
+    
+    if "esg" in sector_lower:
+        required = ["sustainability", "environmental", "governance", "disclosure", "reporting"]
+        prohibited = ["high-risk ai", "algorithmic impact", "foundation models", "ai system"]
+        
+        has_req = any(req in doc_str for req in required)
+        if not has_req:
+            return False, "ESG Policies document lacks required sustainability/environmental keywords."
+            
+        has_proh = any(proh in doc_str for proh in prohibited)
+        if has_proh:
+            return False, "ESG Policies document contains prohibited AI-governance terminology."
+            
+    elif "posh" in sector_lower:
+        required = ["harassment", "workplace", "complaints", "committee", "redressal"]
+        prohibited = ["algorithmic", "cybersecurity", "gdpr", "artificial intelligence"]
+        
+        has_req = any(req in doc_str for req in required)
+        if not has_req:
+            return False, "POSH Policies document lacks required workplace harassment prevention keywords."
+            
+        has_proh = any(proh in doc_str for proh in prohibited)
+        if has_proh:
+            return False, "POSH Policies document contains prohibited tech/privacy terminology."
+            
+    return True, ""
 
 def _generate_high_fidelity_mock(country: str, sector: str, scope: str, focus_areas: list, context: dict) -> dict:
     """
     Generates a beautifully tailored, high-fidelity legislative framework template mock 
-    so the platform remains completely interactive and functional even without active API keys.
+    based on the requested sector, so the platform remains completely interactive and functional.
     """
-    # Tailor national institutions dynamically
-    inst_map = {
-        "India": {
-            "authority": "National AI Regulatory Authority (NAIRA) / Ministry of Electronics and Information Technology (MeitY)",
-            "cert": "CERT-In (Indian Computer Emergency Response Team)",
-            "appellate": "Cyber Appellate Tribunal",
-            "commission": "National AI Commission"
-        },
-        "United States": {
-            "authority": "Federal Artificial Intelligence Council (FAIC) / National Institute of Standards and Technology (NIST)",
-            "cert": "CISA (Cybersecurity and Infrastructure Security Agency)",
-            "appellate": "Federal Courts of Appeals",
-            "commission": "Federal Trade Commission (FTC)"
-        },
-        "European Union": {
-            "authority": "European Artificial Intelligence Board (EAIB)",
-            "cert": "ENISA (European Union Agency for Cybersecurity)",
-            "appellate": "Court of Justice of the European Union",
-            "commission": "European Commission"
-        }
-    }
+    # Normalize sector matching
+    matched_sector = "AI Governance"
+    for s_key in SECTOR_FALLBACK_TEMPLATES.keys():
+        if s_key.lower() == sector.lower() or s_key.lower().replace(" policies", "") == sector.lower().replace(" policies", ""):
+            matched_sector = s_key
+            break
+            
+    template = SECTOR_FALLBACK_TEMPLATES[matched_sector]
+    inst = get_sector_institutions(country, sector)
     
-    inst = inst_map.get(country, {
-        "authority": f"National Joint Council for {sector} / Department of Digital Services",
-        "cert": f"National Cyber Defense Centre (NCDC)",
-        "appellate": "National Administrative Tribunal",
-        "commission": f"Department of Technology & Standards"
-    })
-    
-    # Custom tailored sections
-    sections = [
-        {
-            "number": "1",
-            "title": "Definitions and Scope",
-            "content": f"This regulatory framework establishes the legal and procedural guidelines governing {sector} activities throughout the jurisdiction of {country}. It applies directly to all public and private entities operating, developing, or distributing systems and technologies classified within this scope. This includes national and foreign corporations providing service layers to resident citizens. Major definitions herein establish classifications for 'High-Risk Applications', 'Data Processor Fiduciaries', and 'Algorithmic Decision Entities' to coordinate with international standards.",
-            "subsections": [
-                {
-                    "number": "1.1",
-                    "title": "Jurisdictional Applicability",
-                    "content": f"Extends to any digital service layer offering {sector} products directly impacting {country}'s domestic economy, regardless of physical servers or regional corporate registration."
-                }
-            ]
-        },
-        {
-            "number": "2",
-            "title": "Guiding Principles",
-            "content": f"Decisions and interpretations arising under this framework shall be strictly guided by the principles of transparent operations, human-centric design, risk-proportional accountability, and robust security baselines. Regulators and developers must cooperate to ensure that technological advancements respect individual privacy rights, national sovereignty, and economic development priorities. These principles establish a robust principles-based safety posture.",
-            "subsections": [
-                {
-                    "number": "2.1",
-                    "title": "Proportional Regulatory Response",
-                    "content": "Regulatory oversight shall remain strictly proportionate to the potential societal impact, ensuring compliance barriers do not inhibit grassroots innovation or small enterprise initiatives."
-                }
-            ]
-        },
-        {
-            "number": "3",
-            "title": "Institutional Framework and Governance",
-            "content": f"A dedicated regulatory division, functioning as the {inst['authority']}, is hereby formally established. The authority is empowered to draft binding administrative rules, conduct compliance audits on high-risk deployment architectures, and collaborate with standard-setting bodies globally. In instances of incident escalations or national cybersecurity threat reports, the authority shall maintain immediate data links with {inst['cert']} to contain threat factors.",
-            "subsections": [
-                {
-                    "number": "3.1",
-                    "title": "The Advisory Council",
-                    "content": "An advisory panel of academic researchers, industry experts, and civil advocates shall meet quarterly to review standard frameworks and draft update briefs for the Ministry."
-                }
-            ]
-        },
-        {
-            "number": "4",
-            "title": "Core Obligations and Requirements",
-            "content": f"All registered entities developing or implementing high-risk technology architectures must complete mandatory registration and present standard impact assessments. Developers must ensure that all codebases maintain audit logs and clear explainability parameters. Under the national requirements, these systems must integrate robust failure safeguards, local backup repositories, and standardized reporting mechanisms to track potential operational anomalies.",
-            "subsections": [
-                {
-                    "number": "4.1",
-                    "title": "Audit and Transparency Requirements",
-                    "content": "System developers are required to present detailed algorithmic impact reports and register high-risk system architectures with the National Registry."
-                }
-            ]
-        },
-        {
-            "number": "5",
-            "title": "Rights and Protections",
-            "content": f"Citizens of {country} are hereby guaranteed fundamental digital protections under this section. Any consumer subject to automated high-stakes decisions has the right to demand explicit human review and complete technical explanation of the underlying logic. Furthermore, entities must ensure no unfair bias is encoded in the processing algorithms, offering immediate avenues of appeal via the established {inst['appellate']}.",
-            "subsections": [
-                {
-                    "number": "5.1",
-                    "title": "Right to Human Intervention",
-                    "content": "Any automated decision significantly affecting employment, financial status, or legal rights can be appealed directly for manual human evaluation."
-                }
-            ]
-        },
-        {
-            "number": "6",
-            "title": "Enforcement and Penalties",
-            "content": f"Failure to comply with register requirements, audit demands, or mandatory safety provisions shall result in immediate administrative review. The {inst['commission']} is authorized to levy statutory fines scaled dynamically to the offending entity's global revenue, capping administrative liabilities up to 4% of annual turnovers for systemic negligence. Continued compliance failures shall result in temporary operation suspensions.",
-            "subsections": [
-                {
-                    "number": "6.1",
-                    "title": "Administrative Liabilities",
-                    "content": "Statutory fines are scaled proportionally based on risk profiles, with maximum caps allocated to systemic data breaches and unnotified algorithmic manipulations."
-                }
-            ]
-        },
-        {
-            "number": "7",
-            "title": "Implementation Roadmap",
-            "content": f"The national adoption of this framework follows a progressive, phased schedule over a 24-month horizon. This provides ample adaptation buffers for startups and local developers. Initial phases prioritize institutional setup and basic registry creation, moving sequentially into comprehensive audit enforcing and strict penalty compliance in final quarters.",
-            "subsections": [
-                {
-                    "number": "7.1",
-                    "title": "Voluntary Compliance Window",
-                    "content": "A 12-month grace window is established to support local developer adaptations, offering free compliance sandboxes and government training modules."
-                }
-            ]
-        },
-        {
-            "number": "8",
-            "title": "International Cooperation",
-            "content": f"Given the borderless scale of digital service layers, {country}'s regulatory bodies shall participate in global threat sharing networks, bilateral data validation trusts, and regulatory harmonization groups. Compliance audits conducted by recognized foreign authorities may be accepted under equivalence agreements to minimize regulatory duplication for multinational enterprises.",
-            "subsections": [
-                {
-                    "number": "8.1",
-                    "title": "Cross-Border Threat Synchronization",
-                    "content": f"Mandatory real-time security logs sharing with friendly neighboring states and ENISA / CERT networks to synchronize defenses against systemic digital exploits."
-                }
-            ]
-        },
-        {
-            "number": "9",
-            "title": "Review and Amendment Procedures",
-            "content": f"The technological landscape of {sector} shifts rapidly. To prevent legislative obsolescence, the Ministry shall order a complete legislative audit of this framework every two years. Any amendment proposals must be presented to the National Legislature, incorporating feedback gathered during public stakeholder roundtables.",
-            "subsections": [
-                {
-                    "number": "9.1",
-                    "title": "Dynamic Standards Updates",
-                    "content": "Technical specifications, standard parameters, and specific cybersecurity thresholds can be updated via administrative circulars, avoiding formal legislative cycles."
-                }
-            ]
-        }
-    ]
-    
+    # Process and normalize focus areas
+    clean_focus_areas = []
+    if isinstance(focus_areas, list):
+        for fa in focus_areas:
+            if isinstance(fa, str) and fa.strip():
+                clean_focus_areas.append(fa.strip())
+    elif isinstance(focus_areas, str):
+        clean_focus_areas = [item.strip() for item in focus_areas.split(",") if item.strip()]
+
+    # Weave focus areas dynamically into the text
+    if clean_focus_areas:
+        focus_str = ", ".join(clean_focus_areas)
+        focus_emphasis_summary = f" In response to designated national priorities, this framework places particular regulatory emphasis on governing and strengthening capabilities in the areas of {focus_str}."
+        focus_definitions = f" Specific definitions and compliance metrics are established for technologies and operational vectors associated with {focus_str}."
+        focus_obligations = f" Under the core obligations, registered entities must integrate explicit mitigation strategies and security baselines addressing {focus_str}."
+        focus_roadmap = f" Dedicated standards and enforcement protocols for {focus_str} will be finalized within this transition horizon."
+        
+        focus_sub_applicability = f" deployments, with dedicated oversight rules for {focus_str}."
+        focus_sub_obligations = f", documenting explicit safeguards and compliance plans for {focus_str}."
+        focus_sub_roadmap = f" specifically addressing best practices in {focus_str}."
+    else:
+        focus_emphasis_summary = ""
+        focus_definitions = ""
+        focus_obligations = ""
+        focus_roadmap = ""
+        focus_sub_applicability = "."
+        focus_sub_obligations = "."
+        focus_sub_roadmap = "."
+
+    # Format the template fields using country and institution mappings
+    formatted_sections = []
+    for sec in template["sections"]:
+        formatted_subsections = []
+        for sub in sec["subsections"]:
+            sub_content = sub["content"].format(
+                country=country,
+                authority=inst["authority"],
+                cert=inst["cert"],
+                appellate=inst["appellate"],
+                commission=inst["commission"]
+            )
+            # Weave in focus area logic dynamically
+            if sec["number"] == "1":
+                sub_content += focus_sub_applicability
+            elif sec["number"] == "4":
+                sub_content += focus_sub_obligations
+            elif sec["number"] == "7":
+                sub_content += focus_sub_roadmap
+                
+            formatted_subsections.append({
+                "number": sub["number"],
+                "title": sub["title"],
+                "content": sub_content
+            })
+            
+        sec_content = sec["content"].format(
+            country=country,
+            authority=inst["authority"],
+            cert=inst["cert"],
+            appellate=inst["appellate"],
+            commission=inst["commission"]
+        )
+        # Weave in focus area logic dynamically to sections
+        if sec["number"] == "1":
+            sec_content += focus_definitions
+        elif sec["number"] == "4":
+            sec_content += focus_obligations
+        elif sec["number"] == "7":
+            sec_content += focus_roadmap
+            
+        formatted_sections.append({
+            "number": sec["number"],
+            "title": sec["title"],
+            "content": sec_content,
+            "subsections": formatted_subsections
+        })
+
     # Custom tailored references
     refs = []
     for idx, r_pol in enumerate(context.get("reference_policies", [])):
@@ -298,11 +559,11 @@ def _generate_high_fidelity_mock(country: str, sector: str, scope: str, focus_ar
                 "title": f"Global {sector} Cooperation Agreement",
                 "country": "OECD",
                 "year": 2024,
-                "source_url": "https://www.oecd.org/digital/",
+                "source_url": f"https://www.google.com/search?q={sector.replace(' ', '+')}+global+standards",
                 "relevance": "Underpins transparent reporting models and core legislative safety clauses."
             }
         ]
-        
+
     # Gaps addressed list
     gap_addressed = []
     for gap in context.get("gaps", []):
@@ -310,13 +571,13 @@ def _generate_high_fidelity_mock(country: str, sector: str, scope: str, focus_ar
             "gap": gap,
             "how_addressed": f"Remediated via Section {len(gap_addressed)%4 + 3} audit requirements."
         })
-        
+
     return {
-        "title": f"{country.upper()} NATIONAL {sector.upper()} STRATEGY & LEGISLATIVE FRAMEWORK BLUEPRINT",
-        "short_title": f"{country} {sector} Framework",
-        "executive_summary": f"This comprehensive policy framework blueprint establishes the statutory and operational parameters for {sector} systems within {country}. Addressing key regulatory gaps identified during multi-jurisdiction semantic comparisons, the blueprint drafts clear boundaries for system audits, consumer transparency rights, and robust institutional oversight. It aligns {country}'s domestic industries with international standards, balancing security posture with technical innovation.",
-        "preamble": f"Recognizing the transformative scale of {sector} technologies and their deep impact on commerce, governance, and citizen welfare; the Government of {country} hereby decrees this draft framework to establish safe, accountable, and highly resilient technology systems.",
-        "sections": sections,
+        "title": template["title"].format(country_upper=country.upper()),
+        "short_title": template["short_title"].format(country=country),
+        "executive_summary": template["executive_summary"].format(country=country) + focus_emphasis_summary,
+        "preamble": template["preamble"].format(country=country),
+        "sections": formatted_sections,
         "implementation_timeline": [
             {
                 "phase": "Phase 1: Institution Setup",
@@ -340,17 +601,33 @@ def _generate_high_fidelity_mock(country: str, sector: str, scope: str, focus_ar
                 "phase": "Phase 3: Full Enforcement",
                 "duration": "12-24 months",
                 "actions": [
-                    "Activate mandatory audit compliance checks for high-risk systems",
+                    "Activate mandatory audit compliance checks",
                     "Establish appellate tribunals for citizen dispute reviews",
                     "Enable cross-border sharing links with international peers"
                 ]
             }
         ],
-        "enforcement_mechanisms": f"Administered by the {inst['authority']} in coordination with national courts and local data commissioners.",
-        "monitoring_framework": "Continuous impact reports, annual statutory reviews, and mandatory independent external auditing loops.",
+        "enforcement_mechanisms": template["enforcement_mechanisms"].format(authority=inst["authority"]),
+        "monitoring_framework": template["monitoring_framework"],
         "references": refs,
         "gap_analysis_addressed": gap_addressed
     }
+
+def resolve_provider():
+    from app.config import LLM_PROVIDER, GOOGLE_API_KEY
+    prov = (LLM_PROVIDER or "auto").lower().strip()
+    if prov == "auto":
+        if GOOGLE_API_KEY:
+            return "gemini", GOOGLE_API_KEY
+        else:
+            return "mock", ""
+    elif prov == "gemini":
+        if GOOGLE_API_KEY:
+            return "gemini", GOOGLE_API_KEY
+        else:
+            return "mock", ""
+    else:
+        return "mock", ""
 
 def generate_policy_document(
     country: str,
@@ -359,22 +636,42 @@ def generate_policy_document(
     focus_areas: list = None
 ) -> dict:
     """
-    Constructs contextual prompts and uses Claude to generate a structured legislative document draft.
+    Constructs contextual prompts and uses Gemini or mock fallback to generate a structured legislative document draft.
     """
-    global api_key
-    
-    print(f"--- DEBUG: api_key is {repr(api_key)} ---")
-
+    start_time = datetime.now()
     context = build_generation_context(country, sector)
-
-    # High-fidelity mock fallback if ANTHROPIC_API_KEY is not set
-    if not api_key or "sk-ant" not in api_key:
+    provider_name, api_key_val = resolve_provider()
+    
+    print(f"[INFO] Resolved LLM provider: {provider_name}")
+    
+    # 1. MOCK PROVIDER FLOW
+    if provider_name == "mock":
+        print(f"[GENERATION AUDIT] Provider: mock, Model: sector_template, Demo Mode: True, Fallback mock generation executed: True")
         mock_doc = _generate_high_fidelity_mock(country, sector, scope, focus_areas, context)
-        return {
+        gen_time = (datetime.now() - start_time).total_seconds()
+        
+        # Ensure generation_metadata is present inside the document object
+        metadata = {
+            "provider": "mock",
+            "model": "sector_template",
+            "demo_mode": True,
+            "country": country,
+            "sector": sector,
+            "generation_timestamp": datetime.now().isoformat(),
+            "generation_time_seconds": round(gen_time, 2),
+            "prompt_length": 0,
+            "response_length": len(json.dumps(mock_doc)),
+            "validation_retry_count": 0
+        }
+        mock_doc["generation_metadata"] = metadata
+        
+        res = {
             "policy_id": str(uuid.uuid4()),
             "country": country,
             "sector": sector,
+            "demo_mode": True,
             "generated_at": datetime.now().isoformat(),
+            "generation_metadata": metadata,
             "document": mock_doc,
             "context_used": {
                 "existing_policies_count": context["existing_count"],
@@ -383,12 +680,31 @@ def generate_policy_document(
                 "demo_mode": True
             }
         }
+        
+        # Save prompt and response files
+        try:
+            safe_country = country.replace(" ", "_")
+            safe_sector = sector.replace(" ", "_")
+            scratch_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scratch"))
+            os.makedirs(scratch_dir, exist_ok=True)
+            
+            prompt_content = f"No prompt sent (Mock provider active for sector {sector} and country {country})"
+            with open(os.path.join(scratch_dir, "prompt_sent.txt"), "w", encoding="utf-8") as f:
+                f.write(prompt_content)
+            with open(os.path.join(scratch_dir, f"{safe_country}_{safe_sector}_prompt_sent.txt"), "w", encoding="utf-8") as f:
+                f.write(prompt_content)
+                
+            resp_content = json.dumps(res, indent=2)
+            with open(os.path.join(scratch_dir, "response_received.json"), "w", encoding="utf-8") as f:
+                f.write(resp_content)
+            with open(os.path.join(scratch_dir, f"{safe_country}_{safe_sector}_response_received.json"), "w", encoding="utf-8") as f:
+                f.write(resp_content)
+        except Exception as e:
+            print(f"[WARN] Failed to write mock audit logs to disk: {e}")
+            
+        return post_process_generated_document(res, context)
 
-    anthropic_client = Anthropic(api_key=api_key)
-
-
-    context = build_generation_context(country, sector)
-
+    # Common prompts
     system_prompt = """
 You are an expert policy drafter with 20 years experience drafting legislation for international government bodies including the UN, EU, and national governments across Asia, Africa, and the Americas.
 
@@ -490,50 +806,110 @@ STRICT REFERENCE RULE:
 - For each selected reference, copy the exact "title", "country", "year", and "source_url" metadata verbatim into the "references" array. Under no circumstances should you generate a "source_url" that was not present in the reference list.
 """
 
-    try:
-        response = anthropic_client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=8000,
-            messages=[{"role": "user", "content": user_prompt}],
-            system=system_prompt
-        )
-        raw_text = response.content[0].text.strip()
-    except Exception as e:
-        print(f"[WARN] Claude Opus failed or returned error: {e}. Trying fallback model...")
-        # Fallback in case claude-opus-4-5 model is not available or errors
+    max_attempts = 2
+    last_error = None
+    
+    for attempt in range(max_attempts):
         try:
-            response = anthropic_client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=8000,
-                messages=[{"role": "user", "content": user_prompt}],
-                system=system_prompt
-            )
-            raw_text = response.content[0].text.strip()
-        except Exception as ex:
-            raise RuntimeError(f"Failed to generate policy via Anthropic API: {str(ex)}")
+            # 2. GEMINI LLM FLOW
+            if provider_name == "gemini":
+                model_name = GEMINI_MODEL
+                print(f"[GENERATION AUDIT] Provider: gemini, Model: {model_name}, Demo Mode: False, Fallback mock generation executed: False")
+                
+                # Setup model
+                model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=system_prompt
+                )
+                
+                # Save prompt sent
+                try:
+                    safe_country = country.replace(" ", "_")
+                    safe_sector = sector.replace(" ", "_")
+                    scratch_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scratch"))
+                    os.makedirs(scratch_dir, exist_ok=True)
+                    
+                    full_prompt = f"=== SYSTEM INSTRUCTION ===\n{system_prompt}\n\n=== USER PROMPT ===\n{user_prompt}"
+                    with open(os.path.join(scratch_dir, "prompt_sent.txt"), "w", encoding="utf-8") as f:
+                        f.write(full_prompt)
+                    with open(os.path.join(scratch_dir, f"{safe_country}_{safe_sector}_prompt_sent.txt"), "w", encoding="utf-8") as f:
+                        f.write(full_prompt)
+                except Exception as pe:
+                    print(f"[WARN] Failed to write prompt audit files: {pe}")
+                
+                response = model.generate_content(
+                    contents=user_prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        response_mime_type="application/json"
+                    ),
+                    request_options={"timeout": 60.0}
+                )
+                raw_text = response.text.strip()
+                
+                # Save raw response
+                try:
+                    with open(os.path.join(scratch_dir, "response_received.json"), "w", encoding="utf-8") as f:
+                        f.write(raw_text)
+                    with open(os.path.join(scratch_dir, f"{safe_country}_{safe_sector}_response_received.json"), "w", encoding="utf-8") as f:
+                        f.write(raw_text)
+                except Exception as re:
+                    print(f"[WARN] Failed to write raw response audit files: {re}")
+                
 
-    # Clean JSON if wrapped in markdown code blocks
-    if raw_text.startswith("```"):
-        raw_text = raw_text.split("```")[1]
-        if raw_text.startswith("json"):
-            raw_text = raw_text[4:]
-    raw_text = raw_text.strip()
 
-    try:
-        document = json.loads(raw_text)
-    except Exception as parse_err:
-        print(f"[ERROR] Failed parsing Claude JSON. Raw text: {raw_text}")
-        raise ValueError(f"AI response was not valid JSON: {str(parse_err)}")
+            # Clean JSON if wrapped in markdown code blocks
+            if raw_text.startswith("```"):
+                raw_text = raw_text.split("```")[1]
+                if raw_text.startswith("json"):
+                    raw_text = raw_text[4:]
+            raw_text = raw_text.strip()
 
-    return {
-        "policy_id": str(uuid.uuid4()),
-        "country": country,
-        "sector": sector,
-        "generated_at": datetime.now().isoformat(),
-        "document": document,
-        "context_used": {
-            "existing_policies_count": context["existing_count"],
-            "reference_policies": context["reference_policies"],
-            "gaps_identified": list(context["gaps"])
-        }
-    }
+            document = json.loads(raw_text)
+            
+            # Validate document content
+            is_valid, err_reason = validate_policy_document_content(sector, document)
+            if is_valid:
+                gen_time = (datetime.now() - start_time).total_seconds()
+                prompt_len = len(system_prompt) + len(user_prompt)
+                resp_len = len(raw_text)
+                
+                # Add generation_metadata directly inside the document object
+                metadata = {
+                    "provider": provider_name,
+                    "model": model_name,
+                    "demo_mode": False,
+                    "country": country,
+                    "sector": sector,
+                    "generation_timestamp": datetime.now().isoformat(),
+                    "generation_time_seconds": round(gen_time, 2),
+                    "prompt_length": prompt_len,
+                    "response_length": resp_len,
+                    "validation_retry_count": attempt
+                }
+                document["generation_metadata"] = metadata
+                
+                res = {
+                    "policy_id": str(uuid.uuid4()),
+                    "country": country,
+                    "sector": sector,
+                    "demo_mode": False,
+                    "generated_at": datetime.now().isoformat(),
+                    "generation_metadata": metadata,
+                    "document": document,
+                    "context_used": {
+                        "existing_policies_count": context["existing_count"],
+                        "reference_policies": context["reference_policies"],
+                        "gaps_identified": list(context["gaps"]),
+                        "demo_mode": False
+                    }
+                }
+                return post_process_generated_document(res, context)
+            else:
+                print(f"[WARN] Generated content failed validation check on attempt {attempt + 1}: {err_reason}")
+                last_error = ValueError(f"Content validation failed: {err_reason}")
+                
+        except Exception as err:
+            print(f"[ERROR] Exception during generation attempt {attempt + 1}: {err}")
+            last_error = err
+
+    raise last_error or RuntimeError("Policy generation failed all validation and retry attempts.")

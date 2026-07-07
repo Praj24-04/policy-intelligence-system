@@ -17,13 +17,19 @@ def compile_archive():
         "venv",
         "__pycache__",
         ".idea",
-        "scratch",
-        "data"  # raw SQLite databases or large raw data (excluding for light weight package)
+        "scratch"
     }
     
     exclude_files = {
         "policy-intelligence-system.zip",
-        ".DS_Store",
+        "policy-intelligence-system-clean.zip",
+        "policyiq.zip",
+        "user_manual.md",
+        "user_manual.pdf",
+        "design.md",
+        "policyoraauditreport.docx",
+        "~$licyoraauditreport.docx",
+        ".ds_store",
         "thumbs.db"
     }
 

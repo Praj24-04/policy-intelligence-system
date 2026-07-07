@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import umap
 import hdbscan
+import pickle
 
 # Setup paths to ensure we can import app modules properly
 _backend_root = Path(__file__).parent.parent.parent
@@ -11,6 +12,8 @@ if str(_backend_root) not in sys.path:
 
 from app.database import get_connection
 from app.ml.embedding_store import get_all_embeddings
+
+CLUSTERER_PKL_PATH = _backend_root / "data" / "clusterer.pkl"
 
 class PolicyClusterer:
     def __init__(self):
@@ -35,6 +38,45 @@ class PolicyClusterer:
         self.policy_ids = []
         self.labels_ = None
         self.probabilities_ = None
+
+    def save_state(self):
+        """Pickle the fitted models and state to disk."""
+        try:
+            CLUSTERER_PKL_PATH.parent.mkdir(parents=True, exist_ok=True)
+            state = {
+                "reducer": self.reducer,
+                "clusterer": self.clusterer,
+                "fitted": self.fitted,
+                "reduced_embeddings": self.reduced_embeddings,
+                "policy_ids": self.policy_ids,
+                "labels_": self.labels_,
+                "probabilities_": self.probabilities_
+            }
+            with open(CLUSTERER_PKL_PATH, "wb") as f:
+                pickle.dump(state, f)
+            print(f"[OK] Saved clusterer state to {CLUSTERER_PKL_PATH}")
+        except Exception as e:
+            print(f"[WARN] Failed to save clusterer state to disk: {e}")
+
+    def load_state(self) -> bool:
+        """Load the pickled models and state from disk. Returns True if successful."""
+        if not CLUSTERER_PKL_PATH.exists():
+            return False
+        try:
+            with open(CLUSTERER_PKL_PATH, "rb") as f:
+                state = pickle.load(f)
+            self.reducer = state["reducer"]
+            self.clusterer = state["clusterer"]
+            self.fitted = state["fitted"]
+            self.reduced_embeddings = state.get("reduced_embeddings")
+            self.policy_ids = state.get("policy_ids", [])
+            self.labels_ = state.get("labels_")
+            self.probabilities_ = state.get("probabilities_")
+            print(f"[OK] Loaded clusterer state from {CLUSTERER_PKL_PATH}")
+            return True
+        except Exception as e:
+            print(f"[WARN] Failed to load clusterer state from disk: {e}")
+            return False
 
     def fit(self, embeddings: np.ndarray, policy_ids: list) -> dict:
         """
@@ -150,6 +192,7 @@ def run_clustering_job() -> dict:
 
     # Fit using our singleton instance
     mapping = _clusterer.fit(embeddings, policy_ids)
+    _clusterer.save_state()
     
     # Expose probabilities for confidence updates
     probabilities = _clusterer.probabilities_
@@ -187,11 +230,13 @@ def run_clustering_job() -> dict:
 
 def load_and_fit() -> dict:
     """
-    Loads all embeddings from PostgreSQL that already have cluster_ids assigned,
-    runs _clusterer.fit() on them to restore the trained state in memory without
-    updating the database.
+    First attempts to load the clusterer state from disk.
+    If not found, falls back to loading embeddings from PostgreSQL, fitting from scratch, and saving.
     """
-    print("[INFO] Restoring clusterer state from database...")
+    if _clusterer.load_state():
+        return _clusterer.get_cluster_summary()
+
+    print("[INFO] Clusterer state not found on disk. Restoring from database embeddings...")
     policies = get_all_embeddings()
     if not policies:
         print("[WARN] No embedded policies found. Cannot load and fit.")
@@ -202,6 +247,7 @@ def load_and_fit() -> dict:
 
     # Fit using our singleton instance
     _clusterer.fit(embeddings, policy_ids)
+    _clusterer.save_state()
     summary = _clusterer.get_cluster_summary()
     return summary
 
