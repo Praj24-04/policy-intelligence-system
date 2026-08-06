@@ -1,0 +1,12 @@
+import psycopg2
+conn = psycopg2.connect("postgresql://postgres:admin123@localhost:5432/policy_db")
+cur = conn.cursor()
+cur.execute("DELETE FROM policies WHERE id LIKE 'eurlex_%'")
+conn.commit()
+print(f"Deleted {cur.rowcount} eurlex policies for clean refetch")
+cur.execute("DELETE FROM policies WHERE id LIKE 'fedreg_%'")
+conn.commit()
+print(f"Deleted {cur.rowcount} fedreg policies for clean refetch")
+cur.execute("SELECT COUNT(*) FROM policies")
+print(f"Remaining: {cur.fetchone()[0]} policies (CISA only)")
+conn.close()

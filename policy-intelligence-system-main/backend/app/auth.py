@@ -1,0 +1,104 @@
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+import bcrypt
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from app.database import get_connection
+
+from app.config import JWT_SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, BCRYPT_ROUNDS
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+def hash_password(plain: str) -> str:
+    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)).decode("utf-8")
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+
+# ── Token creation ─────────────────────────────────────────────────────────
+def create_access_token(data: dict) -> str:
+    payload = data.copy()
+    payload["exp"] = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload["type"] = "access"
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=ALGORITHM)
+
+def create_reset_token(email: str) -> str:
+    payload = {
+        "sub": email,
+        "type": "reset",
+        "exp": datetime.utcnow() + timedelta(hours=1),
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=ALGORITHM)
+
+def verify_reset_token(token: str) -> str | None:
+    """Returns email if valid reset token, else None."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "reset":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
+
+# ── DB helpers ─────────────────────────────────────────────────────────────
+def get_user_by_email(email: str) -> dict | None:
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT id, email, full_name, password_hash, role, created_at FROM users WHERE email = %s",
+        (email.lower(),)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return dict(row)
+
+def get_user_by_id(user_id: int) -> dict | None:
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT id, email, full_name, password_hash, role, created_at FROM users WHERE id = %s",
+        (user_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return dict(row)
+
+# ── Dependency ─────────────────────────────────────────────────────────────
+def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+            
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+            
+        user = get_user_by_id(int(user_id))
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+            
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """Dependency that restricts access to admin-role users only."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
+
+# ── Activity Logging ───────────────────────────────────────────────────────
+def log_activity(user_id: int, user_email: str, action: str, detail: str = "", ip: str = ""):
+    """Write a unified audit trail entry to activity_logs."""
+    try:
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO activity_logs (user_id, user_email, action, detail, ip_address) VALUES (%s, %s, %s, %s, %s)",
+            (user_id, user_email, action, detail, ip)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[WARN] Failed to log activity: {e}")
